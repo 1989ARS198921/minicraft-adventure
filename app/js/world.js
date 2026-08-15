@@ -38,6 +38,12 @@ export function setSeed(s) {
   seedOffZ = ((s >> 8) % 1000) * 0.9;
 }
 
+
+function generateChunk(data, cx, cz) {
+    generateUnderground(data, cx, cz);  // Уровень -30..-10
+    generateSurface(data, cx, cz);       // Уровень 0..40 (уже есть)
+    generateSkyWorld(data, cx, cz);     // Уровень 60..120
+}
 // Детерминированный генератор по координатам чанка
 function chunkRand(cx, cz, i) {
   let h = G.seed ^ Math.imul(cx, 374761393) ^ Math.imul(cz, 668265263) ^ Math.imul(i, 974634211);

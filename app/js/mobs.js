@@ -571,61 +571,11 @@ function makeBossModel(bossData) {
 //  🎮 СОЗДАНИЕ МОНСТРОВ
 // ============================================================
 
-function spawnMob(kind, x, z, customHp = null, isBoss = false, bossData = null) {
-  const K = KINDS[kind];
-  if (!K && !isBoss) return null;
-  
-  let parts;
-  let mobKind = kind;
-  let mobData = K;
-  
-  if (isBoss && bossData) {
-    parts = makeBossModel(bossData);
-    mobData = bossData;
-    mobKind = bossData.id;
-  } else {
-    parts = makePixelMob(kind);
-  }
-  
-  const m = {
-    kind: mobKind,
-    ...mobData,
-    ...parts,
-    x, z,
-    feet: groundHeight(Math.floor(x), Math.floor(z)),
-    home: { x, z },
-    tx: x, tz: z,
-    wait: Math.random() * 4,
-    phase: Math.random() * 6,
-    hp: customHp || mobData.hp || 35,
-    maxHp: customHp || mobData.hp || 35,
-    coolT: 0, swingT: 0, flashT: 0, speedCur: 0,
-    angry: false, dead: false, respawnT: 0,
-    growled: false, isBoss: isBoss,
-    dmg: mobData.dmg || mobData.attack || 5,
-    speed: mobData.speed || 2,
-    aggro: mobData.aggro || 10,
-    reach: mobData.reach || 1.5,
-    cool: mobData.cool || 2,
-    drop: mobData.drop || 'goldOre',
-    dropN: mobData.dropN || 1,
-    name: mobData.name || 'Монстр',
-    hitMsg: mobData.hitMsg || 'Монстр ударил!',
-    color: mobData.color || 0x7B3F9E,
-    size: mobData.size || 1
-  };
-  
-  m.group.traverse(o => { o.userData.mob = m; });
-  m.group.position.set(m.x, m.feet, m.z);
-  G.scene.add(m.group);
-  
-  // Создаём HP-бар
-  createHPBar(m);
-  
-  MOBS.push(m);
-  return m;
+function spawnMob(type, x, y, z) {
+    const mob = window.spawnMob(type, x, y, z); // mobs_integration.js
+    mob.ai = createAIForMob(mob); // ai_mobs.js
+    return mob;
 }
-
 // ============================================================
 //  🏙️ ЗАПРЕТНЫЕ ЗОНЫ
 // ============================================================
