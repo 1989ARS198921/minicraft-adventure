@@ -15,10 +15,20 @@
 // 10 regular mobs + 10 bosses with unique anatomy and weapons
 
 // ==================== ПРОВЕРКА THREE.JS ====================
-// Если THREE не определён (например, файл загружен до three.module.js),
-// откладываем инициализацию
-if (typeof THREE === 'undefined') {
-    console.warn('⚠️ enhanced_mobs.js: THREE не загружен. Модели будут созданы позже.');
+// Если THREE не определён — ждём его загрузки (three.module.js может
+// загружаться асинхронно через import map)
+let _threeReady = typeof THREE !== 'undefined';
+if (!_threeReady) {
+    console.log('[enhanced_mobs.js] THREE ещё не загружен, ожидание...');
+    const _threeCheck = setInterval(() => {
+        if (typeof THREE !== 'undefined') {
+            clearInterval(_threeCheck);
+            _threeReady = true;
+            console.log('[enhanced_mobs.js] THREE загружен, модели доступны');
+        }
+    }, 50);
+    // Страховка: остановить проверку через 10 сек
+    setTimeout(() => clearInterval(_threeCheck), 10000);
 }
 
 // ==================== ПОМОЩНИКИ ====================

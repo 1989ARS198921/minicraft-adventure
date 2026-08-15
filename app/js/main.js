@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { CONFIG, STARTER_INV } from './config.js';
 import { initAudio } from './audio.js';
-import { initWorld, setSeed, streamChunks, groundHeight } from './world.js';
+import { initWorld, setSeed, streamChunks, groundHeight, blockAt } from './world.js';
 import { initParticles, updateParticles } from './particles.js';
 import { initTorches, initTorchLights, updateTorchLights, addTorch, getTorches } from './torches.js';
 import { initQuests, renderQuests } from './quests.js';
@@ -96,6 +96,8 @@ const G = {
   mobAnimations: [],       // активные анимации мобов
   worldLevel: 'surface'    // текущий уровень: surface/underground/sky
 };
+G.getBlock=blockAt;
+G.mobs = window.mobs || [];
 window.G = G;
 
 // ============================================================

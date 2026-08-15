@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <!-- Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./js/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    window.THREE = THREE;
+    console.log('[index.html] THREE экспортирован в window');
+  </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>MiniCraft Mobile</title>
@@ -9,7 +24,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <!-- 1. СНАЧАЛА Three.js -->
-<script type="module" src="js/three.module.js"></script>
+
 
 <!-- 2. ПОТОМ утилиты -->
 <script src="js/utils.js"></script>
@@ -18,6 +33,7 @@
 <script src="js/underground.js"></script>
 <script src="js/skyworld.js"></script>
 <script src="js/enhanced_skins.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="js/enhanced_mobs.js"></script>
 <script src="js/ai_mobs.js"></script>
 <script src="js/quests_new_locations.js"></script>

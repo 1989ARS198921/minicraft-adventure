@@ -354,11 +354,11 @@ class BatAI extends MobAI {
 
     update(delta, world, player) {
         // Летучие мыши летают
-        this.updateFlying(delta);
+        this.updateFlying(delta, world);
         super.update(delta, world, player);
     }
 
-    updateFlying(delta) {
+    updateFlying(delta, world) {
         // Парение в воздухе
         this.mob.y += Math.sin(Date.now() * 0.003) * 0.01;
 
