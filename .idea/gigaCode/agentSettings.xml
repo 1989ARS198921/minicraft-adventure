@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GigaCodeAgentSettings">
+    <option name="autoApproveEdits" value="true" />
+    <option name="autoApprovedCommands">
+      <list>
+        <Execute>
+          <option name="pattern" value="powershell.exe -Command &quot;(Get-Content 'C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/js/player.js').Count&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="powershell.exe -Command &quot;(Get-Content 'C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/js/world.js').Count&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;monsters\.length&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;spawnCastleMonsters&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;const bosses =|let bosses =|var bosses =&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;function createForestCastle|function createStoneCastle|function createIceCastle&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;const monsters =|let monsters =|var monsters =&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;monsters\[&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;monsters&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;bosses&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;__scene|__camera|__scene =&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;makeCube2&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;script type=\&quot;module\&quot;|type=\&quot;importmap\&quot;&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Select-String -Path &quot;C:/Users/1989a/Downloads/MiniCraft-Adventure-RPG-V50-3D-Vertical-Slice (1)/app/index.html&quot; -Pattern &quot;script type=&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd *" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="Start-Process powershell *" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="netstat" />
+        </Execute>
+      </list>
+    </option>
+  </component>
+</project>

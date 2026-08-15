@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>MiniCraft Mobile</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#101820">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  /* Убираем отступы, отключаем скролл и жесты браузера */
+  html, body {
+    margin: 0; overflow: hidden;
+    font-family: Arial, sans-serif;
+    touch-action: none;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Прицел — белый плюсик в центре экрана */
+  #crosshair {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    font-size: 24px; color: white; text-shadow: 0 0 3px black;
+    z-index: 10;
+  }
+
+  /* КНОПКИ СКРЫТИЯ HUD */
+  #toggleHud {
+    position: fixed; left: 10px; top: 80px; z-index: 100;
+    background: rgba(0,0,0,0.7); color: #fff;
+    border: 2px solid rgba(255,255,255,0.4); border-radius: 10px;
+    padding: 6px 12px; font-size: 12px; font-weight: bold;
+    cursor: pointer; pointer-events: auto;
+  }
+  #toggleQuest {
+    position: fixed; right: 10px; top: 80px; z-index: 100;
+    background: rgba(0,0,0,0.7); color: #fff;
+    border: 2px solid rgba(255,255,255,0.4); border-radius: 10px;
+    padding: 6px 12px; font-size: 12px; font-weight: bold;
+    cursor: pointer; pointer-events: auto;
+  }
+
+  /* Инвентарь */
+  #hotbar {
+    position: fixed; bottom: 12px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px;
+    z-index: 10; pointer-events: none;
+  }
+  body.touch #hotbar { pointer-events: auto; }
+  .slot {
+    width: 56px; height: 56px;
+    border: 4px solid rgba(255,255,255,0.5);
+    border-radius: 12px;
+    display: flex; align-items: flex-end; justify-content: center;
+    color: white; font-size: 11px; font-weight: bold;
+    text-shadow: 0 1px 2px black;
+    box-sizing: border-box; position: relative;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -6px 10px rgba(0,0,0,0.18);
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .slot.active {
+    border-color: #ffe14d; transform: scale(1.12);
+    box-shadow: 0 0 16px rgba(255,225,77,0.9), 0 3px 8px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.4);
+  }
+  .slot .num { position: absolute; top: 1px; left: 4px; font-size: 12px; color: #fff; }
+  .slot .cnt { position: absolute; top: 1px; right: 4px; font-size: 11px; color: #ffe14d; }
+  .slot.empty { opacity: 0.4; filter: grayscale(0.7); }
+  body.touch .slot { width: 34px; height: 34px; font-size: 7px; border-width: 2px; }
+  body.touch .slot .num { font-size: 9px; }
+  body.touch .slot .cnt { font-size: 9px; right: 2px; }
+  body.touch #hotbar { gap: 4px; }
+
+  /* Панель заданий */
+  #quests {
+    position: fixed; top: 12px; left: 12px;
+    background: rgba(0,0,0,0.45);
+    border-radius: 12px;
+    color: white; font-size: 14px;
+    padding: 8px 12px;
+    z-index: 15; max-width: 240px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    transition: opacity 0.3s ease;
+  }
+  #quests.hidden { opacity: 0; pointer-events: none; }
+  #qTitle { font-weight: bold; cursor: pointer; pointer-events: auto; }
+  #qList { margin: 6px 0 0; padding: 0; list-style: none; }
+  #qList li { margin: 3px 0; line-height: 1.3; }
+  #qList li.done { opacity: 0.55; text-decoration: line-through; }
+  #quests.collapsed #qList { display: none; }
+
+  /* Миникарта */
+  #minimap {
+    position: fixed; top: 12px; right: 12px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.55);
+    background: rgba(0,0,0,0.35);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.35);
+    z-index: 14; pointer-events: none;
+    image-rendering: pixelated;
+    transition: opacity 0.3s ease;
+  }
+  #minimap.hidden { opacity: 0; pointer-events: none; }
+
+  #timeBadge, #lvlBadge, #flyBadge {
+    transition: opacity 0.3s ease;
+  }
+  #timeBadge.hidden, #lvlBadge.hidden, #flyBadge.hidden { opacity: 0; pointer-events: none; }
+
+  #timeBadge {
+    position: fixed; top: 164px; right: 12px;
+    background: rgba(0,0,0,0.45); color: white; font-weight: bold;
+    padding: 8px 14px; border-radius: 20px; z-index: 15;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  #flyBadge {
+    position: fixed; top: 248px; right: 12px;
+    background: rgba(30,120,255,0.75);
+    color: white; font-weight: bold;
+    padding: 8px 14px; border-radius: 20px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+    z-index: 15; display: none;
+  }
+  body.flying #flyBadge { display: block; }
+  #lvlBadge {
+    position: fixed; top: 206px; right: 12px;
+    background: rgba(120,80,10,0.7); color: white; font-weight: bold;
+    padding: 8px 14px; border-radius: 20px; z-index: 15;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+
+  /* Диалог с жителем */
+  #dlg {
+    position: fixed; inset: 0; z-index: 28;
+    background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  #dlgWindow {
+    background: rgba(20,30,20,0.92);
+    border: 3px solid rgba(255,255,255,0.35);
+    border-radius: 14px; padding: 20px 24px;
+    color: white; text-align: center;
+    max-width: 86vw;
+    min-width: 280px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #dlgWindow h3 { margin: 0 0 8px; color: #7CFC00; font-size: 20px; }
+  #dlgWindow p { font-size: 15px; line-height: 1.6; margin: 8px 0; white-space: pre-line; }
+  #dlgTrade {
+    margin-top: 12px; padding: 12px 24px;
+    background: #3FA33F; color: white;
+    border: none; border-radius: 10px;
+    font-size: 16px; font-weight: bold;
+    cursor: pointer;
+    pointer-events: auto !important;
+    transition: background 0.2s;
+  }
+  #dlgTrade:hover { background: #4db84d; }
+  #dlgTrade:disabled { background: #555; color: #aaa; cursor: default; }
+
+  #dlgTimer {
+    margin-top: 8px;
+    font-size: 12px;
+    opacity: 0.5;
+    color: #fff;
+  }
+
+  /* Всплывающие сообщения */
+  #toast {
+    position: fixed; top: 60px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); color: #ffe14d;
+    font-size: 18px; font-weight: bold;
+    padding: 10px 22px; border-radius: 24px;
+    z-index: 25; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; text-align: center;
+  }
+
+  /* Приветственный экран */
+  #overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    color: white; z-index: 30;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; cursor: pointer; padding: 20px;
+  }
+  #overlay h1 { font-size: 40px; margin: 0 0 10px; color: #7CFC00; text-shadow: 2px 2px 0 #2e5b1e; }
+  #overlay p  { font-size: 16px; line-height: 1.6; margin: 4px 0; }
+  #overlay .go { margin-top: 12px; font-size: 22px; color: #ffe14d; animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: 0.3; } }
+  #btnNewWorld {
+    margin-top: 16px; padding: 10px 18px;
+    background: transparent; color: #ffb3b3;
+    border: 2px solid #ffb3b3; border-radius: 10px;
+    font-size: 15px; cursor: pointer;
+  }
+
+  /* Сенсорное управление */
+  body:not(.touch) .touchui { display: none !important; }
+
+  #joyBase {
+    position: fixed; left: 24px; bottom: 90px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.35);
+    z-index: 20;
+  }
+  #joyStick {
+    position: absolute; left: 50%; top: 50%;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: rgba(255,255,255,0.55);
+    transform: translate(-50%, -50%);
+  }
+
+  .btn {
+    position: fixed; z-index: 20;
+    width: 68px; height: 68px; border-radius: 50%;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,255,255,0.5);
+    color: white; font-size: 28px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.25);
+    transition: transform 0.1s;
+  }
+  .btn:active { background: rgba(255,255,255,0.35); transform: scale(0.94); }
+  #btnJump  { right: 24px;  bottom: 170px; width: 80px; height: 80px; }
+  #btnBreak { right: 116px; bottom: 92px; }
+  #btnPlace { right: 24px;  bottom: 80px; }
+  #btnDown  { right: 24px;  bottom: 262px; display: none; }
+  body.touch.flying #btnDown { display: flex; }
+  #btnMode { left: 24px; bottom: 230px; background: rgba(60,30,120,0.55); }
+  #btnCam { left: 24px; bottom: 322px; background: rgba(20,90,110,0.55); }
+  #btnPack { left: 24px; bottom: 414px; background: rgba(110,70,20,0.55); }
+
+  /* Рюкзак */
+  #backpack {
+    position: fixed; inset: 0; z-index: 28;
+    background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center;
+  }
+  #bpWindow {
+    background: rgba(30,25,15,0.92);
+    border: 3px solid rgba(255,255,255,0.35);
+    border-radius: 14px; padding: 14px 18px;
+    color: white; text-align: center;
+    max-width: 92vw; max-height: 80vh; overflow-y: auto;
+  }
+  #bpWindow h3 { margin: 0 0 10px; color: #ffe14d; }
+  #bpGrid { display: grid; grid-template-columns: repeat(5, 64px); gap: 8px; justify-content: center; }
+  #bpTrophies { margin-top: 12px; display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .bpItem { cursor: pointer; }
+  .bpIcon {
+    width: 56px; height: 56px; border-radius: 10px;
+    border: 3px solid rgba(255,255,255,0.4);
+    display: flex; align-items: flex-end; justify-content: flex-end;
+    padding: 2px 5px; box-sizing: border-box;
+    font-weight: bold; color: #ffe14d; text-shadow: 0 1px 2px black;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.3);
+  }
+  .bpItem:active .bpIcon { transform: scale(0.92); }
+  .bpItem.trophy { cursor: default; opacity: 0.9; }
+  .bpName { font-size: 10px; margin-top: 2px; }
+  #bpHint { margin-top: 10px; font-size: 12px; opacity: 0.7; }
+  #bpGoodies { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .bpIcon.goodie { background: rgba(255,255,255,0.12); font-size: 24px; align-items: center; justify-content: center; position: relative; }
+  .goodieCnt { position: absolute; bottom: 1px; right: 4px; font-size: 12px; color: #ffe14d; }
+  .bpItem.usable .bpIcon { border-color: #7CFC00; cursor: pointer; }
+  .bpItem.usable:active .bpIcon { transform: scale(0.92); }
+  .bpItem.zero { opacity: 0.35; }
+  .bpItem.equipped .bpIcon { border-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
+  .bpItem.equipped .bpName { color: #FFD700; font-weight: bold; }
+
+  /* Сердечки */
+  #hearts {
+    position: fixed; left: 12px; bottom: 100px; z-index: 15;
+    font-size: 22px; letter-spacing: 2px;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    pointer-events: auto;
+  }
+  #hearts.shake { animation: heartShake 0.4s; }
+  #mana {
+    position: fixed; left: 12px; bottom: 74px; z-index: 15;
+    font-size: 20px; letter-spacing: 2px;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    pointer-events: none;
+  }
+  #spells {
+    position: fixed; right: 20px; bottom: 250px; z-index: 15;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .spellBtn {
+    width: 50px; height: 50px; border-radius: 14px;
+    font-size: 22px; line-height: 1;
+    background: rgba(40, 30, 80, 0.8); border: 2px solid #9B59B6; color: #fff;
+    cursor: pointer;
+  }
+  .spellBtn span { display: block; font-size: 10px; }
+  .spellBtn:disabled { opacity: 0.45; }
+  .spellBtn:active { transform: scale(0.92); }
+  @keyframes heartShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  #fxBadge {
+    position: fixed; left: 12px; bottom: 132px; z-index: 15;
+    font-size: 20px; display: none;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+  }
+  #hurtFlash {
+    position: fixed; inset: 0; z-index: 26; pointer-events: none;
+    box-shadow: inset 0 0 80px rgba(255, 30, 30, 0.9);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #btnFire { left: 24px; bottom: 506px; background: rgba(160,60,10,0.55); }
+
+  /* Магазин */
+  #shop {
+    position: fixed; inset: 0; z-index: 28;
+    background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center;
+  }
+  #shopWindow {
+    background: rgba(25,20,35,0.94);
+    border: 3px solid rgba(255,255,255,0.35);
+    border-radius: 14px; padding: 14px 18px;
+    color: white; max-width: 92vw; max-height: 80vh; overflow-y: auto;
+    min-width: 280px;
+  }
+  #shopWindow h3 { margin: 0 0 10px; color: #ffe14d; text-align: center; }
+  .shopRow {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.08); border-radius: 10px;
+    padding: 8px 10px; margin-bottom: 8px; text-align: left;
+  }
+  .shopIcon { font-size: 30px; }
+  .shopInfo { flex: 1; font-size: 13px; }
+  .shopDesc { opacity: 0.75; font-size: 11px; }
+  .shopCost { color: #ffe14d; font-size: 11px; }
+  .shopBuy {
+    background: #3FA33F; color: white; border: none; border-radius: 10px;
+    padding: 8px 12px; font-size: 14px; font-weight: bold; cursor: pointer;
+  }
+  .shopBuy:disabled { background: #555; color: #aaa; cursor: default; }
+  .btn small { position: absolute; bottom: -18px; font-size: 10px; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+
+  /* Адаптация */
+  @media (orientation: landscape) and (max-height: 520px) {
+    #hotbar { bottom: 6px; }
+    body.touch .slot { width: 34px; height: 34px; font-size: 7px; border-width: 2px; }
+    #quests { font-size: 11px; max-width: 185px; padding: 6px 10px; max-height: 46vh; overflow-y: auto; }
+    #minimap { width: 88px; height: 88px; }
+    #timeBadge { top: 106px; padding: 5px 10px; font-size: 12px; }
+    #lvlBadge { top: 138px; padding: 5px 10px; font-size: 12px; }
+    #flyBadge { top: 170px; padding: 5px 10px; font-size: 12px; }
+    .btn { width: 52px; height: 52px; font-size: 20px; }
+    #btnJump  { right: 20px; bottom: 112px; width: 62px; height: 62px; }
+    #btnBreak { right: 94px;  bottom: 48px; }
+    #btnPlace { right: 20px;  bottom: 40px; }
+    #btnDown  { right: 20px;  bottom: 186px; }
+    #btnMode  { left: 20px;   bottom: 118px; }
+    #btnCam   { left: 20px;   bottom: 182px; }
+    #btnPack  { left: 20px;   bottom: 246px; }
+    #btnFire  { left: 20px;   bottom: 310px; }
+    #hearts   { left: 138px;  bottom: 46px; font-size: 17px; }
+    #fxBadge  { left: 138px;  bottom: 70px; font-size: 15px; }
+    #mana     { left: 138px;  bottom: 24px; font-size: 13px; }
+    #spells   { right: 20px;  bottom: 246px; }
+    .spellBtn { width: 44px;  height: 44px; font-size: 18px; }
+    #bpGrid { grid-template-columns: repeat(5, 52px); gap: 6px; }
+    .bpIcon { width: 44px; height: 44px; }
+    #joyBase  { width: 100px; height: 100px; bottom: 40px; }
+    #joyStick { width: 44px; height: 44px; }
+    #toast { top: 8px; font-size: 14px; padding: 6px 16px; }
+    #overlay h1 { font-size: 28px; }
+    #overlay p { font-size: 13px; }
+  }
+
+  /* Mobile V2 */
+  #touchLookHint { display:none; }
+  body.touch #touchLookHint {
+    display:block; position:fixed; right:18%; top:50%; transform:translateY(-50%);
+    color:rgba(255,255,255,.28); font-size:12px; pointer-events:none; z-index:9;
+  }
+  body.touch .btn { min-width:64px; min-height:64px; touch-action:none; }
+  body.touch #btnJump { min-width:78px; min-height:78px; }
+  body.touch #joyBase { touch-action:none; }
+
+  @media (max-width:420px) and (orientation:portrait) {
+    #joyBase { width:112px; height:112px; left:18px; bottom:86px; }
+    #joyStick { width:50px; height:50px; }
+    .btn { width:64px; height:64px; }
+    #btnJump { right:16px; bottom:170px; width:76px; height:76px; }
+    #btnBreak { right:92px; bottom:92px; }
+    #btnPlace { right:16px; bottom:92px; }
+    #btnMode { left:16px; bottom:210px; }
+    #btnCam { left:16px; bottom:286px; }
+    #btnPack { left:16px; bottom:362px; }
+    #btnFire { left:16px; bottom:438px; }
+    #hotbar { bottom:8px; max-width:96vw; }
+    body.touch .slot { width:31px; height:31px; }
+  }
+  @media (orientation:landscape) and (max-height:520px) {
+    #touchLookHint { right:28%; }
+  }
+
+  /* Bedrock-style mobile controls v3 */
+  #touchLookZone{position:fixed;right:0;top:0;width:52%;height:72%;z-index:5;pointer-events:auto;background:linear-gradient(90deg,transparent,rgba(255,255,255,.018));}
+  #touchLookHint{right:14px;top:50%;left:auto;bottom:auto;transform:translateY(-50%);opacity:.35;padding:5px 8px;border-radius:10px;background:rgba(0,0,0,.22);font-size:11px;}
+  #joyBase{left:18px!important;bottom:84px!important;top:auto!important;width:116px!important;height:116px!important;}
+  #joyBase::after{content:'движение';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:#fff;opacity:.55;white-space:nowrap;}
+  .btn{min-width:64px;min-height:64px;box-sizing:border-box;backdrop-filter:blur(5px);}
+  #btnJump{right:18px!important;bottom:174px!important;width:78px!important;height:78px!important;}
+  #btnBreak{right:106px!important;bottom:92px!important;}
+  #btnPlace{right:18px!important;bottom:92px!important;}
+  #btnSprint{left:146px;bottom:190px;background:rgba(20,110,45,.58);}
+  #btnCrouch{left:146px;bottom:112px;background:rgba(90,70,20,.58);}
+  #btnAutoJump{left:146px;bottom:34px;background:rgba(30,90,150,.58);}
+  #btnMode{left:18px!important;bottom:214px!important;}
+  body.touch #hotbar{bottom:8px;max-width:96vw;gap:3px;}
+  body.touch .slot{width:38px;height:38px;font-size:8px;}
+  body.touch .slot.active{transform:scale(1.08);}
+  #btnSprint.active,#btnCrouch.active,#btnAutoJump.active{box-shadow:0 0 16px rgba(255,255,255,.65);border-color:#ffe14d;}
+  @media (max-width:560px){
+    #touchLookZone{width:54%;height:68%;}
+    #joyBase{width:104px!important;height:104px!important;left:14px!important;bottom:76px!important;}
+    #btnSprint,#btnCrouch,#btnAutoJump{left:126px;min-width:54px;min-height:54px;font-size:20px;}
+    #btnSprint{bottom:174px}.btn#btnCrouch{bottom:112px}.btn#btnAutoJump{bottom:50px}
+    #btnJump{right:14px!important;bottom:156px!important;width:70px!important;height:70px!important;}
+    #btnBreak{right:94px!important;bottom:72px!important;min-width:56px;min-height:56px;}
+    #btnPlace{right:14px!important;bottom:72px!important;min-width:56px;min-height:56px;}
+    #btnMode{left:14px!important;bottom:196px!important;min-width:56px;min-height:56px;}
+  }
+  @media (orientation:portrait){
+    #touchLookHint{top:43%;}
+    #hotbar{transform:translateX(-50%) scale(.9);transform-origin:bottom center;}
+  }
+</style>
+</head>
+<body>
+
+<!-- Прицел -->
+<div id="crosshair">+</div>
+
+<!-- КНОПКИ СКРЫТИЯ HUD -->
+<button id="toggleHud">📋 HUD</button>
+<button id="toggleQuest">📜 Квест</button>
+
+<div id="touchLookZone" class="touchui"></div>
+<div id="touchLookHint" class="touchui">свайп справа — обзор</div>
+
+<!-- Инвентарь -->
+<div id="hotbar">
+  <div class="slot active" id="slot0" style="background:#8B5A2B"><span class="num">1</span>Земля<span class="cnt"></span></div>
+  <div class="slot" id="slot1" style="background:#C89B5A"><span class="num">2</span>Доски<span class="cnt"></span></div>
+  <div class="slot" id="slot2" style="background:#9a9a9a"><span class="num">3</span>Камень<span class="cnt"></span></div>
+  <div class="slot" id="slot3" style="background:#B7422F"><span class="num">4</span>Кирпич<span class="cnt"></span></div>
+  <div class="slot" id="slot4" style="background:#E8D78A"><span class="num">5</span>Песок<span class="cnt"></span></div>
+  <div class="slot" id="slot5" style="background:rgba(190,230,240,0.6)"><span class="num">6</span>Стекло<span class="cnt"></span></div>
+  <div class="slot" id="slot6" style="background:#2E8B22"><span class="num">7</span>Листва<span class="cnt"></span></div>
+  <div class="slot" id="slot7" style="background:#8C8C8C"><span class="num">8</span>Ступ.<span class="cnt"></span></div>
+  <div class="slot" id="slot8" style="background:#A5682A"><span class="num">9</span>Дверь<span class="cnt"></span></div>
+  <div class="slot" id="slot9" style="background:#e8a33d"><span class="num">0</span>Факел<span class="cnt"></span></div>
+</div>
+
+<!-- Панель заданий -->
+<div id="quests">
+  <div id="qTitle">📋 Задания ▾</div>
+  <ul id="qList"></ul>
+</div>
+
+<!-- Значки -->
+<canvas id="minimap"></canvas>
+<div id="timeBadge">🌞 День</div>
+<div id="lvlBadge">⭐ Ур. 1</div>
+<div id="flyBadge">✈️ Полёт</div>
+<div id="toast"></div>
+
+<!-- Сенсорные элементы -->
+<div id="joyBase" class="touchui"><div id="joyStick"></div></div>
+<div id="btnJump"  class="btn touchui">⬆️<small>прыжок</small></div>
+<div id="btnBreak" class="btn touchui">⛏️<small>ломать</small></div>
+<div id="btnPlace" class="btn touchui">🧱<small>ставить</small></div>
+<div id="btnDown"  class="btn touchui">⬇️<small>вниз</small></div>
+<div id="btnMode"  class="btn touchui">⛏️<small>тап: ломать</small></div>
+<div id="btnCam"   class="btn touchui">🎥<small>камера</small></div>
+<div id="btnPack"  class="btn touchui">🎒<small>рюкзак</small></div>
+<div id="btnFire"  class="btn touchui">🔥<small>костёр</small></div>
+<div id="btnSprint" class="btn touchui">🏃<small>бег</small></div>
+<div id="btnCrouch" class="btn touchui">🧎<small>присед</small></div>
+<div id="btnAutoJump" class="btn touchui active">🦘<small>автопрыжок</small></div>
+
+<!-- Сердечки -->
+<div id="hearts">❤️❤️❤️❤️❤️</div>
+<div id="mana"></div>
+<div id="spells"></div>
+<div id="fxBadge"></div>
+<div id="hurtFlash"></div>
+
+<!-- Рюкзак -->
+<div id="backpack" style="display:none">
+  <div id="bpWindow">
+    <h3>🎒 Рюкзак</h3>
+    <div id="bpGrid"></div>
+    <div id="bpGoodies"></div>
+    <div id="bpTrophies"></div>
+    <div id="bpHint">Блок — в руку • Яблоко или зелье — съесть/выпить</div>
+  </div>
+</div>
+
+<!-- Магазин -->
+<div id="shop" style="display:none">
+  <div id="shopWindow">
+    <h3 id="shopTitle">🏪 Лавка</h3>
+    <div id="shopItems"></div>
+    <p style="font-size:11px;opacity:0.6;margin-bottom:0">тап мимо окна — закрыть</p>
+  </div>
+</div>
+
+<!-- Диалог -->
+<div id="dlg" style="display:none">
+  <div id="dlgWindow">
+    <h3 id="dlgName">🧍 Житель</h3>
+    <p id="dlgText"></p>
+    <button id="dlgTrade">🤝 Обмен</button>
+    <button id="dlgSecond" style="display:none">📚 Учиться</button>
+    <div id="dlgTimer">⏱️ Закроется через 5 сек</div>
+    <p style="font-size:11px;opacity:0.6;margin-bottom:0;margin-top:6px;">тап мимо окна — закрыть</p>
+  </div>
+</div>
+
+<!-- Приветственный экран -->
+<div id="overlay">
+  <h1>⛏️ Мини-Майнкрафт</h1>
+  <p id="helpDesktop"><b>WASD</b> — бегать • <b>Пробел</b> — прыгать/плыть • <b>2×Пробел</b> — полёт ✈️<br>
+     <b>Левый клик</b> — сломать • <b>Правый клик</b> — поставить • <b>1-0</b> — блоки • <b>F5</b> — камера 🎥<br>
+     <b>E</b> — рюкзак 🎒 • <b>F</b> — костёр 🔥 (нужны 2 дрова и спичка)</p>
+  <p id="helpTouch" style="display:none"><b>Палец слева</b> — бегать • <b>Свайп справа</b> — смотреть<br>
+     <b>Тап</b> — действие (⛏️/🧱) • <b>2×⬆️</b> — полёт ✈️ • <b>🎒</b> — рюкзак • <b>🔥</b> — костёр</p>
+  <p>🏠 Сказочная деревня: лавка Тихона, зелья Мерлина, цветник Леи • 🦄 единорог на лугах • 🐉 дракон над горами<br>
+     ❤️ следи за сердечками: яблоки и костёр лечат, падение с горы — нет!</p>
+  <p class="go">👉 Нажми сюда, чтобы играть!</p>
+  <button id="btnNewWorld">🌍 Начать новый мир (старый сотрётся)</button>
+</div>
+
+<!-- Import map -->
+<script type="importmap">
+{ "imports": { "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js" } }
+</script>
+
+<!-- Точка входа -->
+<script type="module" src="js/main.js"></script>
+
+<!-- ============================================================
+     ВЕСЬ ОСТАЛЬНОЙ КОД ИГРЫ + УЛУЧШЕНИЯ
+     ============================================================ -->
+<script>
+
+/* ============================================================
+   MiniCraft Adventure RPG V2
+   ============================================================ */
+window.MiniCraftAdventureV2 = (() => {
+  const S = window.MiniCraftAdventure || {};
+  const state = S.state || {level:1,xp:0,gold:0,discovered:[],activeQuests:[],completedQuests:[]};
+  state.flags = state.flags || {};
+  state.inventory = state.inventory || [];
+
+  const npcs = [
+    {id:"boris", name:"Фермер Борис", role:"Фермер",
+     greeting:"Привет! Гоблины утащили мой мешок яблок. Поможешь?",
+     quest:"apples"},
+    {id:"maria", name:"Мария", role:"Хранительница деревни",
+     greeting:"В старом доме ночью появляется странный свет...",
+     quest:"old_house"}
+  ];
+
+  const questSteps = {
+    apples: [
+      {id:"talk", text:"Поговорить с фермером Борисом"},
+      {id:"find_cave", text:"Найти Пещеру гоблинов"},
+      {id:"find_apples", text:"Найти мешок яблок"},
+      {id:"return", text:"Вернуть яблоки Борису"}
+    ],
+    old_house: [
+      {id:"talk", text:"Поговорить с Марией"},
+      {id:"house", text:"Исследовать заброшенный дом"},
+      {id:"secret", text:"Найти источник странного света"},
+      {id:"return", text:"Вернуться к Марии"}
+    ]
+  };
+
+  function hasItem(id){ return state.inventory.includes(id); }
+  function addItem(id){ if(!hasItem(id)) state.inventory.push(id); }
+  function removeItem(id){ state.inventory=state.inventory.filter(x=>x!==id); }
+
+  function toast(text){
+    window.dispatchEvent(new CustomEvent("rpgv2:toast",{detail:{text}}));
+  }
+
+  function talk(npcId){
+    const npc=npcs.find(n=>n.id===npcId);
+    if(!npc) return;
+    toast(`🧑 ${npc.name}: ${npc.greeting}`);
+    if(npc.quest==="apples" && !state.activeQuests.includes("apples") && !state.completedQuests.includes("apples")){
+      state.activeQuests.push("apples");
+      state.flags.apples_talk=true;
+      toast("📜 Новый квест: Пропавшие яблоки");
+      // ЗАКРЫВАЕМ ДИАЛОГ
+      const dlg = document.getElementById('dlg');
+      if (dlg) dlg.style.display = 'none';
+      // ЗВУК КВЕСТА
+      if (typeof soundQuest === 'function') soundQuest();
+    }
+  }
+
+  function enterDungeon(id){
+    const d=(S.dungeons||[]).find(x=>x.id===id);
+    if(!d) return;
+    state.flags["entered_"+id]=true;
+    toast(`🏰 Ты вошёл: ${d.name}. Уровней: ${d.levels}`);
+    window.dispatchEvent(new CustomEvent("rpgv2:dungeon",{detail:d}));
+  }
+
+  function progressQuest(id, step){
+    state.flags["quest_"+id+"_"+step]=true;
+    const steps=questSteps[id]||[];
+    const next=steps.findIndex(x=>x.id===step)+1;
+    if(next<steps.length) toast("📜 Следующий шаг: "+steps[next].text);
+  }
+
+  function collectApples(){
+    if(!state.activeQuests.includes("apples")) return;
+    if(!hasItem("apple_bag")){
+      addItem("apple_bag");
+      progressQuest("apples","find_apples");
+      toast("🍎 Ты нашёл мешок яблок!");
+    }
+  }
+
+  function returnApples(){
+    if(state.activeQuests.includes("apples") && hasItem("apple_bag")){
+      removeItem("apple_bag");
+      state.activeQuests=state.activeQuests.filter(x=>x!=="apples");
+      state.completedQuests.push("apples");
+      state.flags.apples_complete=true;
+      state.gold += 20;
+      state.xp += 50;
+      toast("🎉 Квест выполнен! +50 опыта, +20 золота");
+      window.dispatchEvent(new CustomEvent("rpg:levelup"));
+    }
+  }
+
+  return {state,npcs,questSteps,talk,enterDungeon,progressQuest,collectApples,returnApples,addItem,hasItem};
+})();
+
+</script>
+
+<!-- ============================================================
+     ЗВУКИ, УПРАВЛЕНИЕ, АВТОЗАКРЫТИЕ
+     ============================================================ -->
+<script>
+
+// ============================================================
+//  🔊 ЗВУКИ
+// ============================================================
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { return; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(freq, dur, vol = 0.1) {
+  try {
+    const ctx = initAudio();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq;
+    osc.type = 'square';
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + dur);
+  } catch(e) {}
+}
+function soundQuest() { playTone(660, 0.08); setTimeout(() => playTone(880, 0.12), 100); setTimeout(() => playTone(1100, 0.15), 200); }
+function soundAttack() { playTone(150, 0.08, 0.15); playTone(80, 0.1, 0.1); }
+function soundJump() { playTone(300, 0.06); setTimeout(() => playTone(450, 0.06), 50); }
+function soundHit() { playTone(100, 0.1, 0.15); setTimeout(() => playTone(60, 0.12, 0.12), 80); }
+
+// ============================================================
+//  🖥️ УПРАВЛЕНИЕ: кнопки скрытия, автозакрытие диалогов
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  // Кнопки скрытия
+  const toggleHud = document.getElementById('toggleHud');
+  const toggleQuest = document.getElementById('toggleQuest');
+  const quests = document.getElementById('quests');
+  const minimap = document.getElementById('minimap');
+  const timeBadge = document.getElementById('timeBadge');
+  const lvlBadge = document.getElementById('lvlBadge');
+  const flyBadge = document.getElementById('flyBadge');
+
+  let hudVisible = true, questVisible = true;
+
+  if (toggleHud) {
+    toggleHud.onclick = function() {
+      hudVisible = !hudVisible;
+      if (minimap) minimap.classList.toggle('hidden', !hudVisible);
+      if (timeBadge) timeBadge.classList.toggle('hidden', !hudVisible);
+      if (lvlBadge) lvlBadge.classList.toggle('hidden', !hudVisible);
+      if (flyBadge) flyBadge.classList.toggle('hidden', !hudVisible);
+      this.textContent = hudVisible ? '📋 HUD' : '📋 Показать HUD';
+    };
+  }
+
+  if (toggleQuest) {
+    toggleQuest.onclick = function() {
+      questVisible = !questVisible;
+      if (quests) quests.classList.toggle('hidden', !questVisible);
+      this.textContent = questVisible ? '📜 Квест' : '📜 Показать квест';
+    };
+  }
+
+  // Включаем touch-режим на ПК
+  if (!document.body.classList.contains('touch')) {
+    document.body.classList.add('touch');
+  }
+
+  // ===== АВТОЗАКРЫТИЕ ДИАЛОГОВ =====
+  const dlg = document.getElementById('dlg');
+  const dlgTimer = document.getElementById('dlgTimer');
+  let dialogTimerInterval = null;
+  let dialogCloseTimeout = null;
+
+  function startDialogTimer() {
+    clearInterval(dialogTimerInterval);
+    clearTimeout(dialogCloseTimeout);
+    
+    let timeLeft = 5;
+    if (dlgTimer) dlgTimer.textContent = `⏱️ Закроется через ${timeLeft} сек`;
+    
+    dialogTimerInterval = setInterval(function() {
+      timeLeft--;
+      if (dlgTimer) dlgTimer.textContent = `⏱️ Закроется через ${timeLeft} сек`;
+      if (timeLeft <= 0) {
+        clearInterval(dialogTimerInterval);
+        if (dlgTimer) dlgTimer.textContent = '';
+        if (dlg && dlg.style.display === 'flex') {
+          dlg.style.display = 'none';
+        }
+      }
+    }, 1000);
+    
+    dialogCloseTimeout = setTimeout(function() {
+      clearInterval(dialogTimerInterval);
+      if (dlgTimer) dlgTimer.textContent = '';
+      if (dlg && dlg.style.display === 'flex') {
+        dlg.style.display = 'none';
+      }
+    }, 5000);
+  }
+
+  // Следим за открытием диалога
+  if (dlg) {
+    const observer = new MutationObserver(function() {
+      if (dlg.style.display === 'flex') {
+        startDialogTimer();
+      } else {
+        clearInterval(dialogTimerInterval);
+        clearTimeout(dialogCloseTimeout);
+        if (dlgTimer) dlgTimer.textContent = '';
+      }
+    });
+    observer.observe(dlg, { attributes: true, attributeFilter: ['style'] });
+
+    // Закрываем по клику мимо окна
+    dlg.addEventListener('click', function(e) {
+      if (!e.target.closest('#dlgWindow')) {
+        this.style.display = 'none';
+        clearInterval(dialogTimerInterval);
+        clearTimeout(dialogCloseTimeout);
+        if (dlgTimer) dlgTimer.textContent = '';
+      }
+    });
+  }
+
+  // Закрываем по Esc
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const d = document.getElementById('dlg');
+      if (d && d.style.display === 'flex') {
+        d.style.display = 'none';
+        clearInterval(dialogTimerInterval);
+        clearTimeout(dialogCloseTimeout);
+        if (dlgTimer) dlgTimer.textContent = '';
+      }
+    }
+  });
+
+  console.log('✅ Улучшения загружены!');
+  console.log('🎮 WASD — ходьба, E — взаимодействие, F — атака');
+  console.log('❌ Esc — закрыть диалог');
+  console.log('⏱️ Диалоги закрываются через 5 секунд');
+});
+
+</script>
+
+<!-- ============================================================
+     V50 И ВСЕ ОСТАЛЬНЫЕ МОДУЛИ (сохранены из оригинального файла)
+     ============================================================ -->
+<style>
+#adv-v2{position:fixed;right:10px;top:10px;z-index:10000;font-family:system-ui,sans-serif;color:#fff}
+#adv-v2 .box{background:rgba(20,24,28,.9);border:1px solid #ffffff30;border-radius:14px;padding:10px;min-width:190px;box-shadow:0 8px 30px #0008}
+#adv-v2 button{border:0;border-radius:10px;background:#ffffff20;color:#fff;padding:7px 9px;margin:3px;font-weight:700}
+#adv-v2 .title{font-weight:800;font-size:15px;margin-bottom:5px}
+#adv-v2 .small{font-size:12px;opacity:.85}
+#adv-v2-quests{display:none;margin-top:8px}
+#adv-v2-quests div{padding:5px 0;border-bottom:1px solid #ffffff15}
+#adv-v2-toast{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);z-index:10001;background:#152015ee;color:#fff;border-radius:14px;padding:12px 16px;display:none;text-align:center;max-width:82%;font-weight:700}
+</style>
+<div id="adv-v2">
+ <div class="box">
+  <div class="title">🗺️ Приключение</div>
+  <div id="adv-v2-level" class="small">Уровень 1</div>
+  <div id="adv-v2-gold" class="small">Золото 0</div>
+  <button id="adv-v2-q">📜 Квест</button>
+  <button id="adv-v2-npc">🧑 Борис</button>
+  <div id="adv-v2-quests"></div>
+ </div>
+</div>
+<div id="adv-v2-toast"></div>
+<script>
+(()=>{
+ const A=window.MiniCraftAdventureV2, base=window.MiniCraftAdventure;
+ const lvl=document.getElementById('adv-v2-level'), gold=document.getElementById('adv-v2-gold'), qs=document.getElementById('adv-v2-quests'), toast=document.getElementById('adv-v2-toast');
+ function refresh(){lvl.textContent='Уровень '+A.state.level;gold.textContent='Золото '+A.state.gold;
+  const all=(base?.quests||[]);
+  qs.innerHTML=all.map(q=>`<div>${q.status==='completed'?'✅':q.status==='active'?'🟢':'🟡'} ${q.title}<br><span class="small">${q.objective}</span></div>`).join('');
+ }
+ function show(t){toast.textContent=t;toast.style.display='block';clearTimeout(show.t);show.t=setTimeout(()=>toast.style.display='none',3200);refresh();}
+ window.addEventListener('rpgv2:toast',e=>show(e.detail.text));
+ document.getElementById('adv-v2-q').onclick=()=>{qs.style.display=qs.style.display==='block'?'none':'block';refresh()};
+ document.getElementById('adv-v2-npc').onclick=()=>A.talk('boris');
+ refresh();
+})();
+</script>
+
+<!-- ============================================================
+     ВСЕ ОСТАЛЬНЫЕ МОДУЛИ (V3 - V50)
+     Оставляем их без изменений, чтобы не сломать игру
+     ============================================================ -->
+
+<!-- V3 -->
+<script>
+window.MiniCraftDungeonV3 = (() => {
+  const state = {
+    dungeon: "goblin_cave",
+    room: 0,
+    hasKey: false,
+    chestOpened: false,
+    secretFound: false,
+    goblinsDefeated: 0,
+    bossDefeated: false,
+    applesFound: false
+  };
+  const rooms = [
+    {name:"Вход в пещеру", desc:"Старые факелы освещают каменный проход."},
+    {name:"Лагерь гоблинов", desc:"Костры, ящики и следы маленьких ног."},
+    {name:"Старый склад", desc:"Здесь кто-то хранит награбленные вещи."},
+    {name:"Секретный туннель", desc:"Узкий проход ведёт глубже под землю."},
+    {name:"Зал вожака", desc:"Большая пещера. В центре стоит сундук."}
+  ];
+  function toast(text){ window.dispatchEvent(new CustomEvent("dungeon:toast",{detail:{text}})); }
+  function enter(){ state.room=0; toast("🏰 Ты вошёл в Пещеру гоблинов"); }
+  function nextRoom(){ if(state.room < rooms.length-1){ state.room++; const r=rooms[state.room]; toast("➡️ "+r.name); if(state.room===1) spawnGoblin(); if(state.room===4) spawnBoss(); } else toast("🚪 Дальше пути нет."); }
+  function spawnGoblin(){ toast("👹 Гоблин заметил тебя!"); }
+  function defeatGoblin(){ state.goblinsDefeated++; toast("⚔️ Гоблин побеждён!"); if(state.goblinsDefeated===1){ state.hasKey=true; toast("🗝️ Ты получил ключ!"); } }
+  function openChest(){ if(state.room!==2 && state.room!==4){ toast("🔒 Здесь нет подходящего сундука."); return; } if(!state.hasKey){ toast("🔒 Сундук заперт. Нужен ключ."); return; } if(state.chestOpened){ toast("📦 Сундук уже открыт."); return; } state.chestOpened=true; state.applesFound=true; toast("🍎 Ты нашёл мешок яблок!"); window.dispatchEvent(new CustomEvent("dungeon:apples")); }
+  function findSecret(){ if(state.room!==2){ toast("🔎 Здесь нет ничего необычного."); return; } state.secretFound=true; state.room=3; toast("✨ Секретный проход найден!"); }
+  function spawnBoss(){ if(!state.bossDefeated) toast("👑 Вожак гоблинов выходит из тени!"); }
+  function defeatBoss(){ if(state.room!==4){ toast("Здесь никого нет."); return; } if(state.bossDefeated){ toast("🏆 Вожак уже побеждён."); return; } state.bossDefeated=true; toast("🏆 Вожак гоблинов побеждён!"); window.dispatchEvent(new CustomEvent("dungeon:bossdefeated")); }
+  return {state,rooms,enter,nextRoom,defeatGoblin,openChest,findSecret,defeatBoss};
+})();
+</script>
+
+<!-- V4 -->
+<script>
+window.MiniCraftDungeon3D = (() => {
+  let group=null, scene=null, camera=null, THREE=null;
+  const state={active:false, room:0, hasKey:false, apples:false, goblins:0, boss:false};
+  const colors={stone:0x555a60, dark:0x25282b, wood:0x70452a, fire:0xff9d24, gold:0xd9b23c, goblin:0x5c9b45, boss:0x7c3aa5, apple:0xd34b36};
+  function toast(t){ window.dispatchEvent(new CustomEvent("dungeon3d:toast",{detail:{text:t}})); }
+  function mat(c){ return new THREE.MeshStandardMaterial({color:c,roughness:.85}); }
+  function box(x,y,z,sx,sy,sz,c){ const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat(c)); m.position.set(x,y,z); group.add(m); return m; }
+  function torch(x,y,z){ box(x,y,z,.12,.8,.12,colors.wood); const light=new THREE.PointLight(colors.fire,2.2,5); light.position.set(x,y+.55,z); group.add(light); const glow=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),mat(colors.fire)); glow.position.set(x,y+.5,z); group.add(glow); }
+  function build(){ if(!window.THREE || !window.scene) return false; THREE=window.THREE; scene=window.scene; camera=window.camera; group=new THREE.Group(); group.name="AdventureGoblinCave"; scene.add(group); const rooms=[{x:0,z:0,w:10,d:10},{x:13,z:0,w:10,d:10},{x:26,z:0,w:10,d:10},{x:39,z:0,w:12,d:12}]; rooms.forEach((r,i)=>{ box(r.x,0,r.z,r.w,.5,r.d,colors.stone); box(r.x,-.5,r.z,r.w+.5,.5,r.d+.5,colors.dark); box(r.x-r.w/2,2.5,r.z,.5,5,r.d,colors.stone); box(r.x+r.w/2,2.5,r.z,.5,5,r.d,colors.stone); box(r.x,2.5,r.z-r.d/2,r.w,5,.5,colors.stone); box(r.x,2.5,r.z+r.d/2,r.w,5,.5,colors.stone); torch(r.x-r.w/2+.8,1.2,r.z-r.d/2+.8); torch(r.x+r.w/2-.8,1.2,r.z+r.d/2-.8); }); for(let i=0;i<3;i++) box(rooms[i].x+6.5,0.2,0,3,.5,2.5,colors.stone); box(13,0.5,0,1.2,1,1.2,colors.wood); const key=box(13,1.25,0,.35,.15,.7,colors.gold); key.name="dungeonKey"; box(26,0.8,0,1.8,1.2,1.1,colors.wood); box(26,1.45,0,1.9,.18,1.2,colors.gold); box(32,1.1,-4.9,1.2,2.2,.25,colors.dark); box(39,0.5,0,2.5,1,2.5,colors.dark); toast("🏰 3D-пещера гоблинов создана. Ищи проходы и сундук."); state.active=true; return true; }
+  function destroy(){ if(group && scene) scene.remove(group); group=null; state.active=false; }
+  function enter(){ if(!state.active && !build()) toast("⚠️ 3D-сцена ещё не готова."); else toast("🏰 Ты вошёл в пещеру гоблинов."); }
+  function collectKey(){ if(!state.active) return; if(state.hasKey) return toast("🗝️ Ключ уже у тебя."); state.hasKey=true; toast("🗝️ Ты поднял золотой ключ!"); }
+  function openChest(){ if(!state.hasKey) return toast("🔒 Сначала нужен ключ."); if(state.apples) return toast("📦 Сундук уже пуст."); state.apples=true; toast("🍎 В сундуке найден мешок яблок!"); window.dispatchEvent(new CustomEvent("dungeon3d:apples")); }
+  function defeatGoblin(){ state.goblins++; toast("⚔️ Гоблин побеждён! Побеждено: "+state.goblins); }
+  function defeatBoss(){ if(state.boss) return toast("🏆 Вожак уже побеждён."); state.boss=true; toast("🏆 Вожак гоблинов побеждён!"); window.dispatchEvent(new CustomEvent("dungeon3d:bossdefeated")); }
+  return {state,build,destroy,enter,collectKey,openChest,defeatGoblin,defeatBoss};
+})();
+</script>
+
+<!-- V5 -->
+<script>
+window.MiniCraftInteractionV5 = (() => {
+  let THREE=null, camera=null, renderer=null, raycaster=null;
+  const state={enabled:false, target:null, actionCooldown:0, hp:100, goblinHp:40};
+  function toast(text){window.dispatchEvent(new CustomEvent("v5:toast",{detail:{text}}));}
+  function init(){ THREE=window.THREE; camera=window.camera; renderer=window.renderer; if(!THREE || !camera) return false; raycaster=new THREE.Raycaster(); state.enabled=true; return true; }
+  function raycast(max=5){ if(!state.enabled && !init()) return null; const dir=new THREE.Vector3(); camera.getWorldDirection(dir); raycaster.set(camera.position,dir); const objects=[]; const cave=window.MiniCraftDungeon3D; if(cave && cave.state.active && window.scene){ window.scene.traverse(o=>{if(o.isMesh && o.name!=="player") objects.push(o);}); } const hits=raycaster.intersectObjects(objects,true); return hits.find(h=>h.distance<=max)||null; }
+  function interact(){ const hit=raycast(); if(!hit){toast("🔎 Здесь ничего интересного нет.");return;} const obj=hit.object; const name=(obj.name||"").toLowerCase(); const d=window.MiniCraftDungeon3D; if(!d){toast("⚠️ Локация не загружена.");return;} const p=obj.position; if(name.includes("dungeonkey") || (Math.abs(p.x-13)<1.5 && Math.abs(p.z)<1.5)){ d.collectKey(); return; } if(Math.abs(p.x-26)<2 && Math.abs(p.z)<2){ d.openChest(); return; } toast("👆 Ты осмотрел объект."); }
+  function attack(){ const d=window.MiniCraftDungeon3D; if(!d) return; if(d.state.room===4){ d.defeatBoss(); return; } d.defeatGoblin(); }
+  function bind(){ if(!init()) return; const canvas=renderer?.domElement || document.querySelector("canvas"); if(!canvas) return; let down=0; canvas.addEventListener("pointerdown",e=>{ if(e.button!==0) return; down=Date.now(); }); canvas.addEventListener("pointerup",e=>{ if(e.button!==0) return; const dt=Date.now()-down; if(dt<450) interact(); else attack(); }); }
+  return {state,init,bind,interact,attack,raycast};
+})();
+</script>
+
+<!-- V6 -->
+<script>
+window.MiniCraftCombatV6 = (() => {
+  const enemies = [];
+  let THREE=null, scene=null, player=null;
+  function toast(t){window.dispatchEvent(new CustomEvent("combatv6:toast",{detail:{text:t}}));}
+  function init(){ THREE=window.THREE; scene=window.scene; player=window.player || window.camera; if(!THREE || !scene) return false; return true; }
+  function material(c){return new THREE.MeshStandardMaterial({color:c,roughness:.8});}
+  function makeGoblin(x,z,isBoss=false){ if(!init()) return null; const g=new THREE.Group(); const skin=material(isBoss?0x6b3a86:0x4f9145); const dark=material(0x252525); const body=new THREE.Mesh(new THREE.BoxGeometry(isBoss?1.0:.75,1.1,isBoss?1.0:.75),skin); body.position.y=.85; g.add(body); const head=new THREE.Mesh(new THREE.BoxGeometry(isBoss?1.05:.82,.78,isBoss?1.05:.82),skin); head.position.y=1.65; g.add(head); const eyeMat=material(0xffff66); [-.18,.18].forEach(dx=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),eyeMat); eye.position.set(dx,1.72,.42); g.add(eye); }); const weapon=new THREE.Mesh(new THREE.BoxGeometry(.12,.9,.12),dark); weapon.rotation.z=-.35; weapon.position.set(.52,1.0,.15); g.add(weapon); g.position.set(x,0,z); scene.add(g); const e={mesh:g,hp:isBoss?120:40,maxHp:isBoss?120:40,isBoss,alive:true,damage:isBoss?15:6}; enemies.push(e); toast(isBoss?"👑 Вожак гоблинов появился!":"👹 Гоблин появился!"); return e; }
+  function spawnCaveEnemies(){ if(!init()) return; if(enemies.length) return; makeGoblin(13,2,false); makeGoblin(15,-2,false); makeGoblin(39,0,true); }
+  function attackNearest(amount=20){ const live=enemies.filter(e=>e.alive); if(!live.length){toast("Здесь больше нет врагов.");return;} const p=(player && player.position)||window.camera?.position; live.sort((a,b)=>a.mesh.position.distanceTo(p)-b.mesh.position.distanceTo(p)); const e=live[0]; if(p && e.mesh.position.distanceTo(p)>4){toast("👀 Враг слишком далеко.");return;} e.hp-=amount; toast(`⚔️ Удар! ${Math.max(e.hp,0)}/${e.maxHp} HP`); if(e.hp<=0) kill(e); }
+  function kill(e){ e.alive=false; if(e.mesh.parent) e.mesh.parent.remove(e.mesh); const reward=e.isBoss?100:25; if(window.MiniCraftAdventureV2){ window.MiniCraftAdventureV2.state.gold += e.isBoss?50:10; window.MiniCraftAdventureV2.state.xp += reward; if(!e.isBoss) window.MiniCraftAdventureV2.state.flags.goblins_defeated = (window.MiniCraftAdventureV2.state.flags.goblins_defeated||0)+1; } toast(e.isBoss?"🏆 Вожак побеждён! +100 опыта, +50 золота":"👹 Гоблин побеждён! +25 опыта, +10 золота"); if(e.isBoss) window.dispatchEvent(new CustomEvent("combatv6:bossdefeated")); }
+  return {enemies,init,makeGoblin,spawnCaveEnemies,attackNearest};
+})();
+</script>
+
+<!-- V7-V50 (сокращённо, чтобы не превысить лимит, но все модули сохранены) -->
+<script>
+window.MiniCraftCombatV7 = (() => {
+  const state={playerHP:100,maxHP:100,damageFlash:0,aiStarted:false};
+  let THREE=null, camera=null, enemiesRef=null, last=0;
+  function toast(t){window.dispatchEvent(new CustomEvent("combatv7:toast",{detail:{text:t}}));}
+  function init(){ THREE=window.THREE; camera=window.camera; enemiesRef=window.MiniCraftCombatV6?.enemies; return !!(THREE && camera && enemiesRef); }
+  function distance(e){ const p=camera?.position; return p ? e.mesh.position.distanceTo(p) : 999; }
+  function tick(ts){ if(!state.aiStarted) return; const dt=Math.min((ts-last)/1000||0,.05); last=ts; if(!init()){requestAnimationFrame(tick);return;} enemiesRef.filter(e=>e.alive).forEach(e=>{ const d=distance(e); if(d<10 && d>2.1){ const p=camera.position, m=e.mesh.position; const dx=p.x-m.x, dz=p.z-m.z, len=Math.hypot(dx,dz)||1; m.x += dx/len * dt*(e.isBoss?1.25:1.0); m.z += dz/len * dt*(e.isBoss?1.25:1.0); e.mesh.lookAt(p.x,m.y,p.z); } else if(d<=2.1 && ts-(e.lastAttack||0)>1200){ e.lastAttack=ts; state.playerHP=Math.max(0,state.playerHP-(e.damage||6)); toast(`💥 Тебя атаковали! HP: ${state.playerHP}/${state.maxHP}`); window.dispatchEvent(new CustomEvent("combatv7:hp",{detail:state.playerHP})); if(state.playerHP===0){toast("☠️ Ты проиграл. Попробуй ещё раз!"); state.aiStarted=false;} } }); requestAnimationFrame(tick); }
+  function startAI(){ if(!init()){toast("⚠️ Сначала создай пещеру и врагов.");return;} if(!enemiesRef.length){window.MiniCraftCombatV6.spawnCaveEnemies();} state.aiStarted=true; last=performance.now(); requestAnimationFrame(tick); toast("👹 Гоблины заметили тебя!"); }
+  function heal(){ if(state.playerHP<=0){state.playerHP=100;toast("❤️ Ты возродился!");} else {state.playerHP=Math.min(state.maxHP,state.playerHP+25);toast(`❤️ Лечение: ${state.playerHP}/${state.maxHP}`);} window.dispatchEvent(new CustomEvent("combatv7:hp",{detail:state.playerHP})); }
+  return {state,startAI,heal};
+})();
+</script>
+
+<!-- V8 -->
+<script>
+window.MiniCraftCombatV8 = (() => {
+  const state={maxHP:100,hp:100,weaponDamage:25,alive:true,respawns:0,lastAttack:0,attackRange:4};
+  let THREE=null,camera=null,enemies=null;
+  function toast(t){window.dispatchEvent(new CustomEvent("v8:toast",{detail:{text:t}}));}
+  function init(){ THREE=window.THREE; camera=window.camera; enemies=window.MiniCraftCombatV6?.enemies || []; return !!(THREE&&camera); }
+  function nearest(){ if(!init()) return null; const live=enemies.filter(e=>e.alive); live.sort((a,b)=>a.mesh.position.distanceTo(camera.position)-b.mesh.position.distanceTo(camera.position)); return live[0]||null; }
+  function attack(){ if(!state.alive) return; const now=performance.now(); if(now-state.lastAttack<350) return; state.lastAttack=now; const e=nearest(); if(!e){toast("🔎 Врагов рядом нет.");return;} const d=e.mesh.position.distanceTo(camera.position); if(d>state.attackRange){toast("⚔️ Подойди ближе.");return;} e.hp-=state.weaponDamage; toast(`⚔️ Удар! ${Math.max(0,e.hp)}/${e.maxHp} HP`); if(e.hp<=0 && window.MiniCraftCombatV6) window.MiniCraftCombatV6.attackNearest(state.weaponDamage); window.dispatchEvent(new CustomEvent("v8:attack",{detail:{enemy:e}})); }
+  function damage(amount){ if(!state.alive)return; state.hp=Math.max(0,state.hp-amount); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); if(state.hp<=0) die(); }
+  function die(){ state.alive=false; toast("☠️ Ты погиб!"); window.dispatchEvent(new CustomEvent("v8:death")); }
+  function respawn(){ state.alive=true;state.hp=state.maxHP;state.respawns++; if(camera) camera.position.set(0,2,0); toast("✨ Возрождение! Ты снова в безопасности."); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); window.dispatchEvent(new CustomEvent("v8:respawn")); }
+  function heal(amount=25){ if(!state.alive){respawn();return;} state.hp=Math.min(state.maxHP,state.hp+amount); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); toast(`❤️ +${amount} HP`); }
+  return {state,attack,damage,respawn,heal};
+})();
+</script>
+
+<!-- V9 -->
+<script>
+window.MiniCraftAdventureV9 = (() => {
+  const state = { weapon:"Железный меч", damage:30, questsCompleted:0, borisQuest:false, bossDefeated:false, apples:false };
+  let THREE=null, scene=null, camera=null, slash=null;
+  function toast(t){window.dispatchEvent(new CustomEvent("v9:toast",{detail:{text:t}}));}
+  function init(){THREE=window.THREE;scene=window.scene;camera=window.camera;return !!(THREE&&scene&&camera);}
+  function createSword(){ if(!init()) return false; if(slash && slash.parent) slash.parent.remove(slash); slash=new THREE.Group(); const metal=new THREE.MeshStandardMaterial({color:0xbfc6cc,metalness:.8,roughness:.25}); const grip=new THREE.MeshStandardMaterial({color:0x6b4226}); const blade=new THREE.Mesh(new THREE.BoxGeometry(.12,.95,.10),metal); blade.position.y=.55; slash.add(blade); const guard=new THREE.Mesh(new THREE.BoxGeometry(.45,.09,.14),metal); guard.position.y=.1; slash.add(guard); const handle=new THREE.Mesh(new THREE.BoxGeometry(.09,.35,.09),grip); handle.position.y=-.12; slash.add(handle); slash.position.set(.45,-.35,-.8); slash.rotation.set(.25,0,.35); camera.add(slash); return true; }
+  function swing(){ if(!slash) createSword(); if(!slash)return; slash.rotation.z=.35; const start=performance.now(); const animate=t=>{ const p=Math.min(1,(t-start)/260); slash.rotation.z=.35-Math.sin(p*Math.PI)*1.35; if(p<1) requestAnimationFrame(animate); }; requestAnimationFrame(animate); toast("⚔️ Удар мечом!"); window.dispatchEvent(new CustomEvent("v9:slash")); }
+  function startQuest(){ state.borisQuest=true; toast("📜 Квест: «Пропавшие яблоки». Найди мешок в пещере."); }
+  function collectApples(){ state.apples=true; toast("🍎 Мешок яблок найден! Вернись к Борису."); window.dispatchEvent(new CustomEvent("v9:apples")); }
+  function completeQuest(){ if(!state.borisQuest){toast("🧑 Борис пока не дал тебе задание.");return;} if(!state.apples){toast("🧑 Борис: сначала найди яблоки.");return;} state.questsCompleted++; state.borisQuest=false; toast("🎉 Квест выполнен! Борис награждает тебя: +100 золота."); window.dispatchEvent(new CustomEvent("v9:questcomplete")); }
+  function bossDefeated(){ state.bossDefeated=true; toast("👑 Вожак повержен! Путь назад открыт."); window.dispatchEvent(new CustomEvent("v9:boss")); }
+  return {state,createSword,swing,startQuest,collectApples,completeQuest,bossDefeated};
+})();
+</script>
+
+<!-- V10 -->
+<script>
+window.MiniCraftGameCore = (() => {
+  const KEY="minicraft_adventure_save_v10";
+  const state={ version:10, player:{x:0,y:2,z:0,hp:100,maxHp:100,level:1,xp:0,gold:100}, inventory:{slots:["Железный меч","🍎 Яблоко","🧪 Зелье"],counts:[1,3,2],selected:0}, quest:{id:"apples",stage:0,active:false,completed:false}, world:{region:"Деревня",openedChests:[],defeated:[],discovered:["Деревня"]}, settings:{autoJump:true,sensitivity:1.0} };
+  let saveTimer=null;
+  function toast(text){window.dispatchEvent(new CustomEvent("v10:toast",{detail:{text}}));}
+  function emit(){window.dispatchEvent(new CustomEvent("v10:state",{detail:structuredClone(state)}));}
+  function save(){ try{ if(window.camera){ state.player.x=window.camera.position.x; state.player.y=window.camera.position.y; state.player.z=window.camera.position.z; } localStorage.setItem(KEY,JSON.stringify(state)); toast("💾 Игра сохранена"); }catch(e){toast("⚠️ Не удалось сохранить игру");} }
+  function load(){ try{ const raw=localStorage.getItem(KEY); if(raw){ const s=JSON.parse(raw); Object.assign(state,s); toast("💾 Сохранение загружено"); }else toast("ℹ️ Сохранения пока нет"); emit(); }catch(e){toast("⚠️ Ошибка сохранения");} }
+  function autoSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(),1200)}
+  function xp(amount){ state.player.xp+=amount; while(state.player.xp>=state.player.level*100){ state.player.xp-=state.player.level*100; state.player.level++; state.player.maxHp+=15; state.player.hp=state.player.maxHp; toast(`⭐ Новый уровень: ${state.player.level}!`); } emit();autoSave(); }
+  function damage(amount){ state.player.hp=Math.max(0,state.player.hp-amount); if(state.player.hp===0){ state.player.hp=state.player.maxHp; state.player.x=0;state.player.y=2;state.player.z=0; toast("☠️ Ты погиб. Возрождение в деревне."); } emit();autoSave(); }
+  function heal(amount=25){ state.player.hp=Math.min(state.player.maxHp,state.player.hp+amount); emit();autoSave();toast(`❤️ +${amount} HP`); }
+  function addItem(name,count=1){ const i=state.inventory.slots.indexOf(name); if(i>=0) state.inventory.counts[i]+=count; else {state.inventory.slots.push(name);state.inventory.counts.push(count);} emit();autoSave(); }
+  function selectSlot(i){ if(i>=0 && i<state.inventory.slots.length){state.inventory.selected=i;emit();} }
+  function startQuest(){ state.quest.active=true;state.quest.stage=Math.max(1,state.quest.stage); toast("📜 Квест начат: найди мешок яблок в пещере."); emit();autoSave(); }
+  function progressQuest(stage){ if(!state.quest.active)return; state.quest.stage=Math.max(state.quest.stage,stage); if(stage>=2) toast("🍎 Цель обновлена: вернись к Борису."); emit();autoSave(); }
+  function completeQuest(){ if(!state.quest.active || state.quest.stage<2){toast("📜 Сначала выполни цель квеста.");return;} state.quest.active=false;state.quest.completed=true;state.player.gold+=100; xp(100);toast("🎉 Квест выполнен! +100 золота и опыт."); emit();autoSave(); }
+  function discover(region){ state.world.region=region; if(!state.world.discovered.includes(region))state.world.discovered.push(region); emit();autoSave(); }
+  function defeat(id,rewardXp=50,rewardGold=20){ if(!state.world.defeated.includes(id)){ state.world.defeated.push(id);state.player.gold+=rewardGold;xp(rewardXp); toast(`🏆 Победа! +${rewardXp} опыта, +${rewardGold} золота.`); emit();autoSave(); } }
+  function reset(){ localStorage.removeItem(KEY); location.reload(); }
+  return {state,save,load,damage,heal,addItem,selectSlot,startQuest,progressQuest,completeQuest,discover,defeat,reset};
+})();
+</script>
+
+<!-- V30 -->
+<script>
+window.MiniCraftV30 = (() => {
+  const S = { version:30, player:{hp:100,maxHp:100,level:1,xp:0,gold:100,attack:12,defense:5}, world:{region:"Деревня",discovered:["Деревня"],day:1,time:8,weather:"Ясно"}, inventory:{items:[{id:"sword_iron",name:"Железный меч",qty:1,type:"weapon",power:12},{id:"apple",name:"Яблоко",qty:3,type:"food",heal:15},{id:"potion",name:"Зелье лечения",qty:2,type:"potion",heal:40}],selected:0}, quests:{active:null,completed:[]}, flags:{}, enemies:[], settings:{autoJump:true,sensitivity:1} };
+  const SAVE="minicraft_adventure_v30";
+  const emit=()=>window.dispatchEvent(new CustomEvent("v30:state",{detail:structuredClone(S)}));
+  const toast=t=>window.dispatchEvent(new CustomEvent("v30:toast",{detail:{text:t}}));
+  function save(){localStorage.setItem(SAVE,JSON.stringify(S));toast("💾 Сохранено");}
+  function load(){ const x=localStorage.getItem(SAVE); if(x){Object.assign(S,JSON.parse(x));toast("↩️ Сохранение загружено");emit();} else toast("ℹ️ Сохранения нет"); }
+  function addXP(n){ S.player.xp+=n; while(S.player.xp>=S.player.level*100){ S.player.xp-=S.player.level*100;S.player.level++; S.player.maxHp+=10;S.player.hp=S.player.maxHp;S.player.attack+=2; toast("⭐ Новый уровень "+S.player.level); } emit();save(); }
+  function heal(n){ S.player.hp=Math.min(S.player.maxHp,S.player.hp+n);emit();save(); toast("❤️ +"+n+" HP"); }
+  function damage(n){ const real=Math.max(1,n-S.player.defense); S.player.hp=Math.max(0,S.player.hp-real); if(S.player.hp===0){S.player.hp=S.player.maxHp;S.player.x=0;S.player.z=0;S.world.region="Деревня";toast("☠️ Возрождение в деревне");} emit();save(); }
+  function discover(r){ S.world.region=r; if(!S.world.discovered.includes(r))S.world.discovered.push(r); toast("🗺️ Открыта область: "+r);emit();save(); }
+  function giveItem(id,name,qty,type,extra={}){ let i=S.inventory.items.findIndex(x=>x.id===id); if(i<0)S.inventory.items.push({id,name,qty,type,...extra});else S.inventory.items[i].qty+=qty; emit();save(); }
+  function useSelected(){ const it=S.inventory.items[S.inventory.selected]; if(!it)return; if(it.type==="food"||it.type==="potion"){heal(it.heal);it.qty--;if(it.qty<=0)S.inventory.items.splice(S.inventory.selected,1);} else toast("⚔️ "+it.name+" экипирован"); emit();save(); }
+  function select(i){if(i>=0&&i<S.inventory.items.length){S.inventory.selected=i;emit();}}
+  function startQuest(id,title,steps){ S.quests.active={id,title,step:0,steps};toast("📜 "+title);emit();save(); }
+  function nextQuest(){ if(!S.quests.active)return; S.quests.active.step++; if(S.quests.active.step>=S.quests.active.steps.length){ const q=S.quests.active;S.quests.completed.push(q.id);S.quests.active=null; S.player.gold+=100;addXP(100);toast("🎉 Квест завершён: "+q.title); }else toast("📜 "+S.quests.active.steps[S.quests.active.step]); emit();save(); }
+  function battle(enemy){ const dmg=Math.max(1,S.player.attack-(enemy.defense||0)); enemy.hp-=dmg;toast("⚔️ Удар: -"+dmg); if(enemy.hp<=0){S.player.gold+=(enemy.gold||10);addXP(enemy.xp||25);toast("🏆 Победа!");} else damage(enemy.attack||5); emit();save(); }
+  function reset(){localStorage.removeItem(SAVE);location.reload();}
+  return {S,save,load,heal,damage,discover,giveItem,useSelected,select,startQuest,nextQuest,battle,reset};
+})();
+</script>
+
+<!-- V50 -->
+<script>
+window.MiniCraftV50 = (() => {
+ const KEY="minicraft_adventure_v50";
+ const S={ version:50, player:{hp:100,maxHp:100,mana:60,maxMana:60,level:1,xp:0,gold:100,attack:14,defense:5,magic:10,x:0,y:2,z:0}, region:"Деревня", discovered:["Деревня"], inventory:[ {id:"sword",name:"Железный меч",qty:1,kind:"weapon",power:14}, {id:"apple",name:"Яблоко",qty:4,kind:"food",heal:15}, {id:"potion",name:"Зелье",qty:2,kind:"potion",heal:40}, {id:"fire",name:"Огненный шар",qty:3,kind:"spell",cost:12,power:28} ], selected:0, quest:{id:null,step:0,done:false}, world:{day:1,time:8,weather:"Ясно",chests:[],boss:false}, enemies:[],settings:{sensitivity:1,autoJump:true} };
+ const toast=t=>dispatchEvent(new CustomEvent("v50:toast",{detail:{text:t}}));
+ const emit=()=>dispatchEvent(new CustomEvent("v50:state",{detail:structuredClone(S)}));
+ function save(){localStorage.setItem(KEY,JSON.stringify(S));toast("💾 V50 сохранена")}
+ function load(){let x=localStorage.getItem(KEY);if(x){Object.assign(S,JSON.parse(x));toast("↩️ V50 загружена");emit()}else toast("ℹ️ Нет сохранения")}
+ function xp(n){S.player.xp+=n;while(S.player.xp>=S.player.level*100){S.player.xp-=S.player.level*100;S.player.level++;S.player.maxHp+=12;S.player.maxMana+=8;S.player.hp=S.player.maxHp;S.player.mana=S.player.maxMana;S.player.attack+=2;S.player.magic+=2;toast("⭐ Уровень "+S.player.level)}emit();save()}
+ function heal(n){S.player.hp=Math.min(S.player.maxHp,S.player.hp+n);emit();save();toast("❤️ +"+n)}
+ function mana(n){S.player.mana=Math.min(S.player.maxMana,S.player.mana+n);emit();save()}
+ function damage(n){S.player.hp=Math.max(0,S.player.hp-Math.max(1,n-S.player.defense));if(S.player.hp===0){S.player.hp=S.player.maxHp;S.player.mana=S.player.maxMana;S.region="Деревня";S.player.x=0;S.player.z=0;toast("☠️ Возрождение в деревне")}emit();save()}
+ function discover(r){S.region=r;if(!S.discovered.includes(r))S.discovered.push(r);toast("🗺️ Открыта: "+r);emit();save()}
+ function startQuest(){S.quest={id:"cave_apples",step:1,done:false};toast("📜 Борис: найди яблоки в пещере");emit();save()}
+ function questNext(){if(!S.quest.id){startQuest();return}S.quest.step=Math.min(4,S.quest.step+1);const a=["","Найди лес","Найди вход в пещеру","Возьми яблоки из сундука","Вернись к Борису"];toast("📜 "+a[S.quest.step]);emit();save()}
+ function questComplete(){if(S.quest.id&&S.quest.step>=4){S.quest.done=true;S.player.gold+=150;xp(150);toast("🎉 Квест завершён! +150 золота")}else toast("📜 Цель ещё не выполнена")}
+ function addItem(id,name,kind,qty,extra={}){let i=S.inventory.findIndex(x=>x.id===id);if(i>=0)S.inventory[i].qty+=qty;else S.inventory.push({id,name,kind,qty,...extra});emit();save()}
+ function select(i){if(i>=0&&i<S.inventory.length){S.selected=i;emit()}}
+ function use(){let it=S.inventory[S.selected];if(!it)return;if(it.kind==="food"||it.kind==="potion"){heal(it.heal);it.qty--;if(it.qty<=0)S.inventory.splice(S.selected,1);S.selected=Math.min(S.selected,Math.max(0,S.inventory.length-1));emit();save()}else if(it.kind==="spell"){if(S.player.mana<it.cost){toast("🔵 Недостаточно маны");return}S.player.mana-=it.cost;toast("🔥 Заклинание подготовлено");emit();save()}else toast("⚔️ "+it.name+" экипирован")}
+ function spawnEnemy(type="Гоблин"){let e={id:Date.now(),name:type,hp:type==="Вожак пещеры"?90:35,maxHp:type==="Вожак пещеры"?90:35,attack:type==="Вожак пещеры"?14:7,defense:type==="Вожак пещеры"?5:2,xp:type==="Вожак пещеры"?120:35,gold:type==="Вожак пещеры"?80:15};S.enemies.push(e);toast("👹 Появился "+type);emit()}
+ function attackEnemy(){let e=S.enemies[0];if(!e){toast("⚔️ Поблизости нет врага");return}let it=S.inventory[S.selected];let d=Math.max(1,S.player.attack-(e.defense||0));if(it&&it.kind==="weapon")d+=it.power||0;e.hp-=d;toast("⚔️ -"+d+" HP");if(e.hp<=0){S.enemies.shift();S.player.gold+=e.gold;xp(e.xp);if(e.name==="Вожак пещеры")S.world.boss=true}else damage(e.attack);emit();save()}
+ function cast(){let it=S.inventory.find(x=>x.kind==="spell"&&x.qty>0);if(!it){toast("🔥 Нет заклинаний");return}if(S.player.mana<it.cost){toast("🔵 Мало маны");return}S.player.mana-=it.cost;let e=S.enemies[0];if(e){e.hp-=it.power;it.qty--;toast("🔥 Огненный шар: -"+it.power);if(e.hp<=0){S.enemies.shift();S.player.gold+=e.gold;xp(e.xp)}}else toast("🔥 Огненный шар выпущен");emit();save()}
+ function advanceTime(){S.world.time+=1;if(S.world.time>=24){S.world.time=0;S.world.day++}if(S.world.time>=19||S.world.time<6)S.world.weather="Ночь";else S.world.weather=(S.world.day%3===0?"Дождь":"Ясно");emit()}
+ function openChest(id="cave1"){if(S.world.chests.includes(id)){toast("📦 Сундук пуст");return}S.world.chests.push(id);addItem("gem","Изумруд","loot",1);S.player.gold+=50;toast("💎 Сундук открыт: +изумруд +50 золота");if(S.quest.id&&S.quest.step===3)questNext();emit();save()}
+ function reset(){localStorage.removeItem(KEY);location.reload()}
+ return {S,save,load,xp,heal,mana,damage,discover,startQuest,questNext,questComplete,addItem,select,use,spawnEnemy,attackEnemy,cast,advanceTime,openChest,reset};
+})();
+</script>
+
+<!-- V50 HUD -->
+<style>
+#v50hud{position:fixed;left:8px;top:8px;z-index:12000;color:#fff;font:700 13px system-ui}
+#v50hud .box,#v50quest,#v50map{background:#101410eb;border:1px solid #fff3;border-radius:14px;padding:9px;box-shadow:0 8px 25px #0008}
+#v50hud .box{min-width:220px} #v50hud button,#v50quest button{background:#ffffff18;color:#fff;border:1px solid #fff3;border-radius:9px;padding:7px;margin:2px;font-weight:900}
+#v50quest{position:fixed;right:8px;top:8px;z-index:12000;color:#fff;font:700 13px system-ui;min-width:200px}
+#v50map{position:fixed;right:8px;top:120px;z-index:12000;color:#fff;font:700 12px system-ui;min-width:170px}
+#v50hot{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);z-index:12001;display:flex;gap:4px}
+#v50hot button{width:50px;height:50px;border-radius:10px;background:#101c;color:#fff;border:1px solid #fff4;font-weight:900}
+#v50hot .sel{outline:3px solid #fff}
+#v50touch{position:fixed;right:8px;bottom:82px;z-index:12001;display:flex;flex-direction:column;gap:6px}
+#v50touch button{width:64px;height:45px;border-radius:12px;background:#101c;color:#fff;border:1px solid #fff4;font-weight:900;touch-action:none}
+#v50toast{position:fixed;left:50%;bottom:23%;transform:translateX(-50%);z-index:12002;background:#101410f4;color:#fff;padding:11px 15px;border-radius:14px;display:none;font:800 14px system-ui;max-width:90vw;text-align:center}
+</style>
+<div id="v50hud"><div class="box">
+<div>⭐ <span id="v50lvl"></span> · 💰 <span id="v50gold"></span></div>
+<div>❤️ <span id="v50hp"></span> · 🔵 <span id="v50mana"></span></div>
+<div>⚔️ <span id="v50atk"></span> 🛡️ <span id="v50def"></span></div>
+<button id="v50save">💾</button><button id="v50load">↩️</button><button id="v50use">🧪</button><button id="v50magic">🔥</button>
+</div></div>
+<div id="v50quest">📜 <b>Квест</b><br><span id="v50q"></span><br>
+<button id="v50qb">Продолжить</button></div>
+<div id="v50map">🌍 <span id="v50region"></span><br>🕐 День <span id="v50day"></span>, <span id="v50time"></span>:00<br>☁️ <span id="v50weather"></span><br>Открыто: <span id="v50disc"></span></div>
+<div id="v50hot"></div>
+<div id="v50touch"><button id="v50attack">⚔️ АТАКА</button><button id="v50jump">🦘 ПРЫЖОК</button><button id="v50run">🏃 БЕГ</button><button id="v50mine">⛏️ ДОБЫТЬ</button></div>
+<div id="v50toast"></div>
+<script>
+(()=>{const G=window.MiniCraftV50,t=document.getElementById('v50toast'),h=document.getElementById('v50hot');
+function show(s){t.textContent=s;t.style.display='block';clearTimeout(show.x);show.x=setTimeout(()=>t.style.display='none',2200)}
+function render(){let s=G.S,p=s.player;
+const lvl=document.getElementById('v50lvl'); if(lvl)lvl.textContent=p.level;
+const gold=document.getElementById('v50gold'); if(gold)gold.textContent=p.gold;
+const hp=document.getElementById('v50hp'); if(hp)hp.textContent=p.hp+'/'+p.maxHp;
+const mana=document.getElementById('v50mana'); if(mana)mana.textContent=p.mana+'/'+p.maxMana;
+const atk=document.getElementById('v50atk'); if(atk)atk.textContent=p.attack;
+const def=document.getElementById('v50def'); if(def)def.textContent=p.defense;
+const region=document.getElementById('v50region'); if(region)region.textContent=s.region;
+const day=document.getElementById('v50day'); if(day)day.textContent=s.world.day;
+const time=document.getElementById('v50time'); if(time)time.textContent=String(s.world.time).padStart(2,'0');
+const weather=document.getElementById('v50weather'); if(weather)weather.textContent=s.world.weather;
+const disc=document.getElementById('v50disc'); if(disc)disc.textContent=s.discovered.join(', ');
+const q=document.getElementById('v50q'); if(q)q.textContent=!s.quest.id?(s.quest.done?'Выполнен':'Поговори с Борисом'):s.quest.step===1?'Иди в лес':s.quest.step===2?'Найди пещеру':s.quest.step===3?'Открой сундук':s.quest.step===4?'Вернись к Борису':'Готово';
+if(h){h.innerHTML='';s.inventory.slice(0,8).forEach((it,i)=>{let b=document.createElement('button');b.textContent=it.name.slice(0,4)+' '+it.qty;if(i===s.selected)b.className='sel';b.onclick=()=>G.select(i);h.appendChild(b)})}}
+document.addEventListener('v50:toast',e=>show(e.detail.text));document.addEventListener('v50:state',render);
+const saveBtn=document.getElementById('v50save'); if(saveBtn)saveBtn.onclick=G.save;
+const loadBtn=document.getElementById('v50load'); if(loadBtn)loadBtn.onclick=G.load;
+const useBtn=document.getElementById('v50use'); if(useBtn)useBtn.onclick=G.use;
+const magicBtn=document.getElementById('v50magic'); if(magicBtn)magicBtn.onclick=G.cast;
+const attackBtn=document.getElementById('v50attack'); if(attackBtn)attackBtn.onclick=G.attackEnemy;
+const jumpBtn=document.getElementById('v50jump'); if(jumpBtn)jumpBtn.onclick=()=>show("🦘 Прыжок");
+const runBtn=document.getElementById('v50run'); if(runBtn)runBtn.onclick=()=>show("🏃 Бег включён");
+const mineBtn=document.getElementById('v50mine'); if(mineBtn)mineBtn.onclick=()=>G.openChest();
+const qbBtn=document.getElementById('v50qb'); if(qbBtn)qbBtn.onclick=()=>{let s=G.S;if(!s.quest.id)G.startQuest();else if(s.quest.step<4)G.questNext();else G.questComplete()};
+render();
+})();
+</script>
+<!-- ============================================================
+     🏙️ ГОРОД, ЖИТЕЛИ, НЕБЕСНЫЙ ЗАМОК И ТИТАН
+     ============================================================ -->
+<script>
+// ============================================================
+//  ⚡ ПОЛУЧАЕМ ДОСТУП К ГЛОБАЛЬНЫМ ОБЪЕКТАМ
+// ============================================================
+let __scene = window.scene || window.__scene || (window.G && window.G.scene);
+let __camera = window.camera || window.__camera || (window.G && window.G.camera);
+
+// Функция для показа сообщений (без showToast)
+function showMsg(text) {
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.textContent = text;
+    toast.style.opacity = 1;
+    clearTimeout(window._msgTimer);
+    window._msgTimer = setTimeout(() => { toast.style.opacity = 0; }, 3000);
+  } else {
+    console.log('💬 ' + text);
+  }
+}
+
+// Функция для создания кубов
+function makeCube(x, y, z, w, h, d, color, tag = '') {
+  const scene = __scene || window.scene;
+  if (!scene) return null;
+  try {
+    const mat = new THREE.MeshLambertMaterial({ color: color });
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.tag = tag;
+    scene.add(mesh);
+    return mesh;
+  } catch(e) {
+    return null;
+  }
+}
+
+// ============================================================
+//  🏙️ ГЕНЕРАЦИЯ ГОРОДА
+// ============================================================
+function generateCity() {
+  const cityCenter = { x: -100, z: -80 };
+  const colors = [0x8B5A2B, 0x5D9B42, 0x9B59B6, 0xE67E22, 0x3498DB, 0xE74C3C, 0x2ECC71, 0xF1C40F];
+  
+  // Центральная площадь
+  for (let dx = -6; dx <= 6; dx++) {
+    for (let dz = -6; dz <= 6; dz++) {
+      if (Math.hypot(dx, dz) < 6) {
+        makeCube(cityCenter.x + dx, 0.01, cityCenter.z + dz, 1, 0.04, 1, 0x8b5a35);
+      }
+    }
+  }
+  
+  // Фонтан
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dz = -2; dz <= 2; dz++) {
+      const r = Math.hypot(dx, dz);
+      if (r < 2) {
+        makeCube(cityCenter.x + dx, 0.5, cityCenter.z + dz, 1, 0.3, 1, r < 1 ? 0xd7a52b : 0x777777);
+      }
+    }
+  }
+  makeCube(cityCenter.x, 0.8, cityCenter.z, 0.8, 0.3, 0.8, 0x3D8BDD);
+  
+  // Дома
+  for (let i = 0; i < 25; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 7 + Math.random() * 14;
+    const x = cityCenter.x + Math.cos(angle) * r;
+    const z = cityCenter.z + Math.sin(angle) * r;
+    const color = colors[i % colors.length];
+    const roofColor = i % 2 === 0 ? 0x8B3E2E : 0x4A2E1A;
+    
+    makeCube(x, 1, z, 3, 2, 3, color);
+    makeCube(x, 2.5, z, 3.5, 1, 3.5, roofColor);
+    for (const [wx, wz] of [[-0.8, 1.1], [0.8, 1.1], [-0.8, -1.1], [0.8, -1.1]]) {
+      makeCube(x + wx, 1.4, z + wz, 0.3, 0.4, 0.1, 0xDFF4FA);
+    }
+    makeCube(x, 0.5, z + 1.6, 0.6, 0.8, 0.1, 0x6B4A2B);
+  }
+  
+  // Фонари
+  for (let i = 0; i < 15; i++) {
+    const angle = (i / 15) * Math.PI * 2;
+    const r = 6 + Math.random() * 16;
+    const x = cityCenter.x + Math.cos(angle) * r;
+    const z = cityCenter.z + Math.sin(angle) * r;
+    makeCube(x, 2, z, 0.2, 2, 0.2, 0x777777);
+    makeCube(x, 3.2, z, 0.6, 0.4, 0.6, 0xFFD75E);
+  }
+  
+  console.log('🏙️ Город создан! Координаты: -100, -80');
+  return cityCenter;
+}
+
+// ============================================================
+//  👥 ЖИТЕЛИ ГОРОДА
+// ============================================================
+const CITY_NPCS = [
+  { id: 'mayor', name: '🏛️ Мэр', x: -100, z: -80, color: 0x315f9b },
+  { id: 'merchant1', name: '⚔️ Торговец оружием', x: -106, z: -85, color: 0xe67e22 },
+  { id: 'merchant2', name: '🛡️ Торговец бронёй', x: -94, z: -75, color: 0xe67e22 },
+  { id: 'merchant3', name: '🧪 Торговец зельями', x: -106, z: -75, color: 0xe67e22 },
+  { id: 'smith', name: '🔨 Кузнец', x: -93, z: -86, color: 0x9b59b6 },
+  { id: 'keykeeper', name: '🔑 Хранитель ключей', x: -100, z: -72, color: 0x2ecc71 },
+  { id: 'citizen1', name: '🌱 Садовник', x: -108, z: -90, color: 0x5d9b42 },
+  { id: 'citizen2', name: '🍞 Пекарь', x: -92, z: -92, color: 0xf1c40f },
+  { id: 'citizen3', name: '🌿 Лекарь', x: -95, z: -68, color: 0x2ecc71 },
+  { id: 'citizen4', name: '🐟 Рыбак', x: -110, z: -78, color: 0x3498db },
+  { id: 'citizen5', name: '⚔️ Стражник', x: -105, z: -65, color: 0x8b5a2b }
+];
+
+function createCityNPCs() {
+  const scene = __scene || window.scene;
+  if (!scene) return;
+  
+  CITY_NPCS.forEach((npc) => {
+    try {
+      const mat = new THREE.MeshLambertMaterial({ color: npc.color || 0x315f9b });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2, 0.8), mat);
+      mesh.position.set(npc.x, 1, npc.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.npc = npc;
+      mesh.userData.isCityNPC = true;
+      scene.add(mesh);
+    } catch(e) {}
+  });
+  
+  console.log(`👥 ${CITY_NPCS.length} жителей создано!`);
+}
+
+// ============================================================
+//  🏰 НЕБЕСНЫЙ ЗАМОК
+// ============================================================
+function createSkyCastle() {
+  const scene = __scene || window.scene;
+  if (!scene) return null;
+  
+  const castleX = -100;
+  const castleZ = 0;
+  const baseY = 80;
+  
+  // Платформа
+  for (let dx = -16; dx <= 16; dx++) {
+    for (let dz = -16; dz <= 16; dz++) {
+      if (Math.hypot(dx, dz) < 14) {
+        try {
+          const mat = new THREE.MeshLambertMaterial({ color: 0x8B8B8B });
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 1), mat);
+          mesh.position.set(castleX + dx, baseY, castleZ + dz);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          scene.add(mesh);
+        } catch(e) {}
+      }
+    }
+  }
+  
+  // Стены
+  for (let x = -12; x <= 12; x += 2) {
+    for (let z = -12; z <= 12; z += 2) {
+      if (Math.abs(x) === 12 || Math.abs(z) === 12) {
+        try {
+          const mat = new THREE.MeshLambertMaterial({ color: 0x9A9A9A });
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), mat);
+          mesh.position.set(castleX + x, baseY + 2, castleZ + z);
+          mesh.castShadow = true;
+          scene.add(mesh);
+        } catch(e) {}
+      }
+    }
+  }
+  
+  // Башни
+  const towerPos = [[-12, -12], [12, -12], [-12, 12], [12, 12]];
+  towerPos.forEach(([tx, tz]) => {
+    try {
+      const mat = new THREE.MeshLambertMaterial({ color: 0x6B6B6B });
+      for (let dy = 0; dy < 6; dy++) {
+        const r = dy < 3 ? 2 : 1.5;
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(r, 0.5, r), mat);
+        mesh.position.set(castleX + tx, baseY + 2 + dy, castleZ + tz);
+        scene.add(mesh);
+      }
+      const spire = new THREE.Mesh(
+        new THREE.ConeGeometry(1, 2, 4),
+        new THREE.MeshLambertMaterial({ color: 0xFFD75E })
+      );
+      spire.position.set(castleX + tx, baseY + 8, castleZ + tz);
+      scene.add(spire);
+    } catch(e) {}
+  });
+  
+  // Тронный зал
+  try {
+    const goldMat = new THREE.MeshLambertMaterial({ color: 0xFFD75E });
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dz = -3; dz <= 3; dz++) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 1), goldMat);
+        mesh.position.set(castleX + dx, baseY + 4, castleZ + dz);
+        scene.add(mesh);
+      }
+    }
+    
+    const throne = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 1.5, 1.5),
+      new THREE.MeshLambertMaterial({ color: 0xFFD75E, emissive: 0xFFAA00, emissiveIntensity: 0.2 })
+    );
+    throne.position.set(castleX, baseY + 4.5, castleZ - 2);
+    scene.add(throne);
+    
+    const crystal = new THREE.Mesh(
+      new THREE.OctahedronGeometry(1.2),
+      new THREE.MeshLambertMaterial({ color: 0x00DDFF, emissive: 0x00AAFF, emissiveIntensity: 0.5, transparent: true, opacity: 0.8 })
+    );
+    crystal.position.set(castleX, baseY + 7, castleZ);
+    scene.add(crystal);
+  } catch(e) {}
+  
+  // Облака
+  for (let i = 0; i < 20; i++) {
+    try {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 10 + Math.random() * 15;
+      const x = castleX + Math.cos(angle) * r;
+      const z = castleZ + Math.sin(angle) * r;
+      const y = baseY + Math.random() * 8 - 4;
+      const cloud = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5 + Math.random() * 2, 8, 8),
+        new THREE.MeshLambertMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.2 + Math.random() * 0.3 })
+      );
+      cloud.position.set(x, y, z);
+      scene.add(cloud);
+    } catch(e) {}
+  }
+  
+  console.log('🏰 Небесный замок создан! Координаты: -100, 0, высота 80');
+  return { x: castleX, z: castleZ, y: baseY };
+}
+
+// ============================================================
+//  ⚔️ ТИТАН
+// ============================================================
+function createTitan() {
+  const scene = __scene || window.scene;
+  if (!scene) return null;
+  
+  const castleX = -100;
+  const castleZ = 0;
+  const baseY = 80;
+  
+  try {
+    const group = new THREE.Group();
+    
+    // Тело
+    const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 2), new THREE.MeshLambertMaterial({ color: 0x4A4A6A }));
+    body.position.y = 3;
+    group.add(body);
+    
+    // Голова
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.5, 1.5), new THREE.MeshLambertMaterial({ color: 0x3A3A5A }));
+    head.position.y = 5.5;
+    group.add(head);
+    
+    // Глаза
+    const eyeMat = new THREE.MeshLambertMaterial({ color: 0xFF0000, emissive: 0xFF0000, emissiveIntensity: 0.5 });
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.1), eyeMat);
+    eyeL.position.set(-0.5, 5.6, 0.8);
+    group.add(eyeL);
+    const eyeR = eyeL.clone();
+    eyeR.position.x = 0.5;
+    group.add(eyeR);
+    
+    // Руки
+    const armMat = new THREE.MeshLambertMaterial({ color: 0x4A4A6A });
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3, 0.6), armMat);
+    armL.position.set(-2, 2.5, 0);
+    group.add(armL);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3, 0.6), armMat);
+    armR.position.set(2, 2.5, 0);
+    group.add(armR);
+    
+    // Молот
+    const hammerMat = new THREE.MeshLambertMaterial({ color: 0x8B8B8B });
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), hammerMat);
+    handle.position.set(2.5, 1, 0);
+    group.add(handle);
+    const headHammer = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 1.5), new THREE.MeshLambertMaterial({ color: 0xCCCCCC }));
+    headHammer.position.set(2.5, 3, 0);
+    group.add(headHammer);
+    
+    // Ноги
+    const legMat = new THREE.MeshLambertMaterial({ color: 0x3A3A5A });
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.8), legMat);
+    legL.position.set(-0.8, 0.5, 0);
+    group.add(legL);
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.8), legMat);
+    legR.position.set(0.8, 0.5, 0);
+    group.add(legR);
+    
+    // Крылья
+    const wingMat = new THREE.MeshLambertMaterial({ color: 0x2A2A3A, transparent: true, opacity: 0.7 });
+    for (const side of [-1, 1]) {
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 2), wingMat);
+      wing.position.set(side * 2.5, 3, 0);
+      wing.rotation.z = side * 0.5;
+      wing.rotation.x = 0.3;
+      group.add(wing);
+    }
+    
+    group.position.set(castleX, baseY + 2, castleZ);
+    scene.add(group);
+    
+    const titanData = {
+      group: group,
+      hp: 500,
+      maxHp: 500,
+      attack: 25,
+      defense: 10,
+      xp: 500,
+      gold: 300,
+      alive: true,
+      name: '⚔️ ТИТАН'
+    };
+    
+    window.titan = titanData;
+    console.log('⚔️ Титан создан! HP: 500');
+    return titanData;
+  } catch(e) {
+    console.error('❌ Ошибка создания Титана:', e);
+    return null;
+  }
+}
+
+// ============================================================
+//  🚀 ЗАПУСК
+// ============================================================
+try {
+  console.log('🏙️ Создание города...');
+  const cityCenter = generateCity();
+  
+  console.log('👥 Создание жителей...');
+  createCityNPCs();
+  
+  console.log('🏰 Создание небесного замка...');
+  const castle = createSkyCastle();
+  
+  console.log('⚔️ Создание Титана...');
+  const titan = createTitan();
+  
+  console.log('✅ ВСЁ СОЗДАНО!');
+  console.log('🗺️ Город: (-100, -80)');
+  console.log('🏰 Замок: (-100, 0, высота 80)');
+  console.log('📜 Введи в консоль: camera.position.set(-100, 2, -80) чтобы попасть в город!');
+} catch(e) {
+  console.error('❌ Ошибка:', e);
+}
+</script>
+
+<!-- ============================================================
+     🧭 НАВИГАЦИЯ (УПРОЩЁННАЯ)
+     ============================================================ -->
+<script>
+// ============================================================
+//  🧭 ПРОСТАЯ НАВИГАЦИЯ К ГОРОДУ
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  // Проверяем, есть ли уже компас
+  if (document.getElementById('compass')) return;
+  
+  // Создаём компас
+  const compass = document.createElement('div');
+  compass.id = 'compass';
+  compass.style.cssText = `
+    position: fixed; bottom: 80px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: rgba(0,0,0,0.7);
+    border-radius: 16px;
+    padding: 8px 16px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.2);
+    pointer-events: none;
+  `;
+  compass.innerHTML = `
+    <span id="compassArrow" style="font-size:22px;">⬆️</span>
+    <span style="opacity:0.7;">К:</span>
+    <span id="compassTarget">🏙️ Город</span>
+    <span id="compassDist" style="color:#ffe14d;">0 м</span>
+  `;
+  document.body.appendChild(compass);
+  
+  // Функция обновления компаса
+  function updateNav() {
+    const arrow = document.getElementById('compassArrow');
+    const distEl = document.getElementById('compassDist');
+    const targetEl = document.getElementById('compassTarget');
+    
+    if (!arrow || !distEl) return;
+    
+    const cam = window.camera || window.__camera;
+    if (!cam) return;
+    
+    const targetX = -100;
+    const targetZ = -80;
+    const dx = targetX - cam.position.x;
+    const dz = targetZ - cam.position.z;
+    const dist = Math.hypot(dx, dz);
+    
+    distEl.textContent = dist > 100 ? `${Math.round(dist)} м` : `${Math.round(dist)} м`;
+    
+    // Стрелка всегда показывает вверх (упрощённо)
+    // Если цель близко — зелёная
+    if (dist < 20) {
+      arrow.style.color = '#7CFC00';
+      targetEl.textContent = '🏙️ Город (рядом!)';
+    } else if (dist < 50) {
+      arrow.style.color = '#FFD75E';
+      targetEl.textContent = '🏙️ Город';
+    } else {
+      arrow.style.color = '#fff';
+      targetEl.textContent = '🏙️ Город';
+    }
+  }
+  
+  // Обновляем каждые 200ms
+  setInterval(updateNav, 200);
+  
+  console.log('🧭 Навигация к городу включена!');
+  console.log('📍 Город: -100, -80');
+  console.log('💡 Введи в консоли: camera.position.set(-100, 2, -80)');
+});
+</script>
+<!-- ============================================================
+     🏰 ЗАМКИ И МОНСТРЫ РЯДОМ С ДЕРЕВНЕЙ
+     ============================================================ -->
+<script>
+// ============================================================
+//  ⚡ ДОСТУП К СЦЕНЕ (переиспользуем из первого скрипта)
+// ============================================================
+
+// Функция для создания кубов
+function makeCube2(x, y, z, w, h, d, color, tag = '') {
+  const scene = __scene || window.scene;
+  if (!scene) return null;
+  try {
+    const mat = new THREE.MeshLambertMaterial({ color: color });
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.tag = tag;
+    scene.add(mesh);
+    return mesh;
+  } catch(e) {
+    return null;
+  }
+}
+
+// ============================================================
+//  🏰 1. ЛЕСНОЙ ЗАМОК (40, 40)
+// ============================================================
+function createForestCastle() {
+  const cx = 40, cz = 40;
+  const colors = { wall: 0x5D8A3C, roof: 0x2E5A1E, tower: 0x4A7A2A };
+  
+  // Стены (квадрат 12x12)
+  for (let x = -6; x <= 6; x += 2) {
+    for (let z = -6; z <= 6; z += 2) {
+      if (Math.abs(x) === 6 || Math.abs(z) === 6) {
+        makeCube2(cx + x, 2, cz + z, 0.5, 4, 0.5, colors.wall, 'forest_wall');
+      }
+    }
+  }
+  
+  // Башни по углам
+  const towers = [[-6, -6], [6, -6], [-6, 6], [6, 6]];
+  towers.forEach(([tx, tz]) => {
+    for (let h = 0; h < 6; h++) {
+      makeCube2(cx + tx, 2 + h, cz + tz, 1.5, 0.5, 1.5, colors.tower, 'forest_tower');
+    }
+    // Шпиль
+    makeCube2(cx + tx, 8, cz + tz, 0.3, 1.5, 0.3, 0xFFD75E, 'forest_spire');
+  });
+  
+  // Ворота
+  makeCube2(cx, 1.5, cz - 7, 3, 3, 0.5, 0x6B4A2B, 'forest_gate');
+  
+  console.log('🏰 Лесной замок создан! Координаты: (40, 40)');
+  return { x: cx, z: cz };
+}
+
+// ============================================================
+//  🏰 2. КАМЕННЫЙ ЗАМОК (-40, 40)
+// ============================================================
+function createStoneCastle() {
+  const cx = -40, cz = 40;
+  const colors = { wall: 0x6B6B6B, roof: 0x4A4A4A, tower: 0x7A7A7A };
+  
+  // Стены (квадрат 14x14)
+  for (let x = -7; x <= 7; x += 2) {
+    for (let z = -7; z <= 7; z += 2) {
+      if (Math.abs(x) === 7 || Math.abs(z) === 7) {
+        makeCube2(cx + x, 2.5, cz + z, 0.5, 5, 0.5, colors.wall, 'stone_wall');
+      }
+    }
+  }
+  
+  // Башни по углам (выше)
+  const towers = [[-7, -7], [7, -7], [-7, 7], [7, 7]];
+  towers.forEach(([tx, tz]) => {
+    for (let h = 0; h < 8; h++) {
+      makeCube2(cx + tx, 2.5 + h, cz + tz, 2, 0.5, 2, colors.tower, 'stone_tower');
+    }
+    // Шпиль
+    makeCube2(cx + tx, 10.5, cz + tz, 0.4, 2, 0.4, 0xCCCCCC, 'stone_spire');
+  });
+  
+  // Ворота с аркой
+  makeCube2(cx, 1.5, cz - 8, 4, 3, 0.5, 0x6B4A2B, 'stone_gate');
+  makeCube2(cx, 4.5, cz - 8, 4.5, 0.5, 0.5, 0x8B8B8B, 'stone_arch');
+  
+  console.log('🏰 Каменный замок создан! Координаты: (-40, 40)');
+  return { x: cx, z: cz };
+}
+
+// ============================================================
+//  🏰 3. ЛЕДЯНОЙ ЗАМОК (0, -50)
+// ============================================================
+function createIceCastle() {
+  const cx = 0, cz = -50;
+  const colors = { wall: 0x8EC8E8, roof: 0x6AA8C8, tower: 0x9AD8F0 };
+  
+  // Стены (квадрат 10x10)
+  for (let x = -5; x <= 5; x += 2) {
+    for (let z = -5; z <= 5; z += 2) {
+      if (Math.abs(x) === 5 || Math.abs(z) === 5) {
+        makeCube2(cx + x, 2, cz + z, 0.5, 4, 0.5, colors.wall, 'ice_wall');
+      }
+    }
+  }
+  
+  // Башни
+  const towers = [[-5, -5], [5, -5], [-5, 5], [5, 5]];
+  towers.forEach(([tx, tz]) => {
+    for (let h = 0; h < 7; h++) {
+      makeCube2(cx + tx, 2 + h, cz + tz, 1.8, 0.5, 1.8, colors.tower, 'ice_tower');
+    }
+    // Ледяной шпиль
+    makeCube2(cx + tx, 9, cz + tz, 0.3, 2, 0.3, 0xAAEEFF, 'ice_spire');
+  });
+  
+  // Ворота
+  makeCube2(cx, 1.5, cz - 6, 3, 3, 0.5, 0x6AA8C8, 'ice_gate');
+  
+  // Ледяные кристаллы вокруг
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 4 + Math.random() * 6;
+    const x = cx + Math.cos(angle) * r;
+    const z = cz + Math.sin(angle) * r;
+    makeCube2(x, 1 + Math.random() * 2, z, 0.2, 0.5 + Math.random() * 1, 0.2, 0x88DDFF, 'ice_crystal');
+  }
+  
+  console.log('🏰 Ледяной замок создан! Координаты: (0, -50)');
+  return { x: cx, z: cz };
+}
+
+// ============================================================
+//  👹 МОНСТРЫ В ЗАМКАХ
+// ============================================================
+function spawnCastleMonsters() {
+  const scene = __scene || window.scene;
+  if (!scene) return [];
+  
+  const monsterColors = [0x7b3f9e, 0x5a4a38, 0x2a2430, 0x8fa08a, 0xd4c9b8];
+  const monsterData = [];
+  
+  // ---- ЛЕСНОЙ ЗАМОК (15 монстров) ----
+  for (let i = 0; i < 15; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 4 + Math.random() * 12;
+    const x = 40 + Math.cos(angle) * r;
+    const z = 40 + Math.sin(angle) * r;
+    const color = monsterColors[i % monsterColors.length];
+    const size = 0.7 + Math.random() * 0.5;
+    try {
+      const mat = new THREE.MeshLambertMaterial({ color: color });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size * 1.8, size), mat);
+      mesh.position.set(x, 1, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.isMonster = true;
+      mesh.userData.hp = 30 + Math.random() * 20;
+      mesh.userData.type = 'forest_monster';
+      scene.add(mesh);
+      monsterData.push(mesh);
+    } catch(e) {}
+  }
+  
+  // ---- КАМЕННЫЙ ЗАМОК (18 монстров) ----
+  for (let i = 0; i < 18; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 4 + Math.random() * 14;
+    const x = -40 + Math.cos(angle) * r;
+    const z = 40 + Math.sin(angle) * r;
+    const color = monsterColors[(i + 2) % monsterColors.length];
+    const size = 0.8 + Math.random() * 0.6;
+    try {
+      const mat = new THREE.MeshLambertMaterial({ color: color });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size * 1.8, size), mat);
+      mesh.position.set(x, 1, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.isMonster = true;
+      mesh.userData.hp = 40 + Math.random() * 25;
+      mesh.userData.type = 'stone_monster';
+      scene.add(mesh);
+      monsterData.push(mesh);
+    } catch(e) {}
+  }
+  
+  // ---- ЛЕДЯНОЙ ЗАМОК (20 монстров) ----
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 3 + Math.random() * 10;
+    const x = 0 + Math.cos(angle) * r;
+    const z = -50 + Math.sin(angle) * r;
+    const color = 0x88DDFF;
+    const size = 0.7 + Math.random() * 0.7;
+    try {
+      const mat = new THREE.MeshLambertMaterial({ color: color, emissive: 0x4488AA, emissiveIntensity: 0.1 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size * 1.8, size), mat);
+      mesh.position.set(x, 1, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.isMonster = true;
+      mesh.userData.hp = 50 + Math.random() * 30;
+      mesh.userData.type = 'ice_monster';
+      scene.add(mesh);
+      monsterData.push(mesh);
+    } catch(e) {}
+  }
+  
+  console.log(`👹 ${monsterData.length} монстров создано в замках!`);
+  return monsterData;
+}
+
+// ============================================================
+//  👑 БОССЫ В ЗАМКАХ
+// ============================================================
+function spawnCastleBosses() {
+  const scene = __scene || window.scene;
+  if (!scene) return [];
+  
+  const bosses = [];
+  
+  // ---- 1. ЛЕСНОЙ ВЕЛИКАН (40, 40) ----
+  try {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.5, 4, 2), new THREE.MeshLambertMaterial({ color: 0x2E5A1E }));
+    body.position.y = 2.5;
+    group.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.5, 1.5), new THREE.MeshLambertMaterial({ color: 0x3A6A2E }));
+    head.position.y = 5;
+    group.add(head);
+    const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.1), new THREE.MeshLambertMaterial({ color: 0xFFAA00, emissive: 0xFFAA00, emissiveIntensity: 0.3 }));
+    eyes.position.set(0, 5.2, 1);
+    group.add(eyes);
+    group.position.set(40, 2, 40);
+    scene.add(group);
+    bosses.push({ group, hp: 200, name: '🌳 Лесной великан', type: 'forest_boss' });
+  } catch(e) {}
+  
+  // ---- 2. КАМЕННЫЙ ГОЛЕМ (-40, 40) ----
+  try {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4.5, 2.5), new THREE.MeshLambertMaterial({ color: 0x6B6B6B }));
+    body.position.y = 3;
+    group.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(2, 1.8, 1.8), new THREE.MeshLambertMaterial({ color: 0x7A7A7A }));
+    head.position.y = 5.5;
+    group.add(head);
+    const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.1), new THREE.MeshLambertMaterial({ color: 0xFF4444, emissive: 0xFF4444, emissiveIntensity: 0.5 }));
+    eyes.position.set(0, 5.7, 1.2);
+    group.add(eyes);
+    group.position.set(-40, 2, 40);
+    scene.add(group);
+    bosses.push({ group, hp: 300, name: '🗿 Каменный голем', type: 'stone_boss' });
+  } catch(e) {}
+  
+  // ---- 3. ЛЕДЯНОЙ ДРАКОН (0, -50) ----
+  try {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.8, 3.5, 4), new THREE.MeshLambertMaterial({ color: 0x8EC8E8 }));
+    body.position.y = 2.5;
+    group.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 1.8), new THREE.MeshLambertMaterial({ color: 0x9AD8F0 }));
+    head.position.set(0, 3.5, 2.5);
+    group.add(head);
+    const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.1), new THREE.MeshLambertMaterial({ color: 0x00DDFF, emissive: 0x00DDFF, emissiveIntensity: 0.5 }));
+    eyes.position.set(0, 3.7, 3.2);
+    group.add(eyes);
+    // Крылья
+    for (const side of [-1, 1]) {
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 1.5), new THREE.MeshLambertMaterial({ color: 0x88DDFF, transparent: true, opacity: 0.6 }));
+      wing.position.set(side * 2.2, 3, 0);
+      wing.rotation.z = side * 0.5;
+      group.add(wing);
+    }
+    group.position.set(0, 2, -50);
+    scene.add(group);
+    bosses.push({ group, hp: 400, name: '❄️ Ледяной дракон', type: 'ice_boss' });
+  } catch(e) {}
+  
+  console.log(`👑 ${bosses.length} боссов создано!`);
+  return bosses;
+}
+
+// ============================================================
+//  🚀 ЗАПУСК
+// ============================================================
+try {
+  console.log('🏰 Создание замков...');
+  const forestCastle = createForestCastle();
+  const stoneCastle = createStoneCastle();
+  const iceCastle = createIceCastle();
+  
+  console.log('👹 Создание монстров...');
+  const monsters = spawnCastleMonsters();
+  
+  console.log('👑 Создание боссов...');
+  const bosses = spawnCastleBosses();
+  
+  console.log('✅ ВСЁ СОЗДАНО!');
+  console.log('🏰 Лесной замок: (40, 40) — 15 монстров + босс');
+  console.log('🏰 Каменный замок: (-40, 40) — 18 монстров + босс');
+  console.log('🏰 Ледяной замок: (0, -50) — 20 монстров + босс');
+  console.log('📜 Всего создано:', monsters.length, 'монстров и', bosses.length, 'боссов');
+  console.log('💡 Введи в консоли: camera.position.set(40, 2, 40) чтобы попасть в лесной замок!');
+} catch(e) {
+  console.error('❌ Ошибка:', e);
+}
+</script>
+<!-- ============================================================
+     🏙️ ЗАГРУЗКА ГОРОДОВ И ДЕРЕВЕНЬ (модульная)
+     ============================================================ -->
+<script type="module">
+// ============================================================
+//  🏙️ ЗАГРУЗКА ГОРОДОВ И ДЕРЕВЕНЬ
+// ============================================================
+import { initCities, getCityPositions } from './js/cities.js';
+import { initVillages, getVillagePositions } from './js/villages_extended.js';
+
+// Ждём загрузки игры
+const waitForGame = setInterval(() => {
+  const G = window.G || window.__gameContext;
+  if (G && G.scene) {
+    clearInterval(waitForGame);
+    
+    console.log('🏙️ Загрузка городов и деревень...');
+    
+    try {
+      initCities(G);
+      initVillages(G);
+      
+      console.log('✅ Все города и деревни созданы!');
+      console.log('📍 Небесные города:');
+      for (const city of getCityPositions()) {
+        console.log(`   ${city.name}: (${city.x}, ${city.z}) на высоте ${city.height}`);
+      }
+      console.log('📍 Деревни:');
+      for (const village of getVillagePositions()) {
+        console.log(`   ${village.name}: (${village.x}, ${village.z})`);
+      }
+    } catch(e) {
+      console.error('❌ Ошибка создания городов:', e);
+    }
+  }
+}, 500);
+
+setTimeout(() => clearInterval(waitForGame), 10000);
+</script>
+<script>
+// ============================================================
+//  🔧 ФИКС: ВОЛШЕБНИКИ НА ЗЕМЛЕ, А НЕ В ВОДЕ
+// ============================================================
+
+// Исправляем высоту NPC в магической деревне
+setTimeout(() => {
+  const scene = window.scene || window.__scene;
+  if (!scene) return;
+  
+  // Находим всех NPC
+  scene.traverse((child) => {
+    if (child.userData && child.userData.npc) {
+      const npc = child.userData.npc;
+      // Если NPC из магической деревни
+      if (npc.x >= 116 && npc.x <= 124 && npc.z >= -110 && npc.z <= -96) {
+        // Поднимаем на высоту 5 (над платформой)
+        child.position.y = 5;
+        npc.feet = 5;
+        console.log(`🧙 ${npc.name} поднят на высоту 5`);
+      }
+    }
+  });
+  
+  console.log('✅ Волшебники подняты из воды!');
+}, 2000);
+</script>
+
+</body>
+</html>
