@@ -15,6 +15,7 @@ import { SKILLS, RANKS, skillRank, costNext, train } from './skills.js';
 import { VILLAGE_HOMES, ELF_HOMES, settlementAt, SETTLEMENTS } from './village.js';
 import { sfx } from './audio.js';
 import { emit } from './bus.js';
+import { QUESTS, questState } from './quests.js';
 
 let G = null;
 const NPCS = []; // все жители
@@ -257,6 +258,100 @@ const NEW_HOMES = [
 ];
 
 // ============================================================
+//  🏙️ ЖИТЕЛИ ПЯТИ БОЛЬШИХ ГОРОДОВ (Этап 2)
+//  В каждом городе: мэр (даёт цепочку заданий города),
+//  торговец (своя лавка) и тренер (учит навыку).
+//  У мэра поле city — по нему квесты понимают, чья цепочка.
+// ============================================================
+const CITY_DEFS = [
+  // ⚙️ Город Стальной
+  { name: 'Мэр Сталивар', role: 'mayor', style: 'cap', city: 'steel',
+    outfit: { skin: '#F1C27D', hair: '#555560', eye: '#3A3A4A',
+              shirt: '#6A7A8C', pants: '#3A4A5A', shoes: '#2A2A2A' },
+    hi: 'Город Стальной держится на смельчаках! Орки у стен совсем обнаглели...' },
+  { name: 'Торговка Мила', role: 'merchant', style: 'bun', city: 'steel',
+    outfit: { skin: '#FFD7B0', hair: '#8A5A2B', eye: '#4A6741',
+              shirt: '#7A8A9C', pants: '#5A6A7A', shoes: '#4A3A2A' },
+    shopTitle: '🏪 Лавка Стального',
+    hi: 'Инструменты и припасы для защитников города — заходи!' },
+  { name: 'Тренер Гвоздь', role: 'trainer', style: 'cap', city: 'steel', trains: 'sword',
+    outfit: { skin: '#E8B88A', hair: '#2B2B2B', eye: '#3A3A4A',
+              shirt: '#4A5A6A', pants: '#3A3A4A', shoes: '#2A1F14' },
+    hi: 'Меч — лучший друг защитника Стального! Покажу, как рубить по-настоящему.' },
+
+  // 💰 Город Золотой
+  { name: 'Мэр Златан', role: 'mayor', style: 'bun', city: 'gold',
+    outfit: { skin: '#F1C9A0', hair: '#D4A017', eye: '#8A5A2B',
+              shirt: '#C9A227', pants: '#8A6A17', shoes: '#5A3A22' },
+    hi: 'Золотой город богат, но скелеты в пустыне не дают покоя караванам!' },
+  { name: 'Торговец Карат', role: 'merchant', style: 'merchant', city: 'gold',
+    outfit: { skin: '#E8B88A', hair: '#3A2A1A', eye: '#8A5A2B',
+              shirt: '#E8C76A', pants: '#8A6A17', shoes: '#5A3A22' },
+    shopTitle: '🏪 Лавка Золотого',
+    hi: 'Золото течёт рекой! Лучшие товары пустыни — только у меня.' },
+  { name: 'Тренер Сабля', role: 'trainer', style: 'long', city: 'gold', trains: 'bow',
+    outfit: { skin: '#F1C27D', hair: '#5A3A2A', eye: '#8A5A2B',
+              shirt: '#B8960F', pants: '#6A5A2A', shoes: '#4A3A2A' },
+    hi: 'В пустыне близко к врагу не подходи — бей из лука! Научу.' },
+
+  // 🏛️ Город Древний
+  { name: 'Хранитель Стар', role: 'mayor', style: 'wizard', city: 'ancient',
+    outfit: { skin: '#F1C9A0', hair: '#DDDDDD', eye: '#5A6A8A',
+              shirt: '#8A8A7A', pants: '#5A5A4A', shoes: '#3A3228' },
+    hi: 'Руины нашего города полны призраками... Поможешь старому городу?' },
+  { name: 'Торговка Мозаика', role: 'merchant', style: 'bun', city: 'ancient',
+    outfit: { skin: '#FFE0C0', hair: '#8A6A4A', eye: '#5A6A8A',
+              shirt: '#A8A898', pants: '#6A6A5A', shoes: '#4A3A2A' },
+    shopTitle: '🏪 Лавка Древнего',
+    hi: 'Древние вещицы и редкости — выбирай, путник!' },
+  { name: 'Мудрец Элл', role: 'trainer', style: 'wizard', city: 'ancient', trains: 'learning',
+    outfit: { skin: '#F1C9A0', hair: '#EEEEEE', eye: '#5A6A8A',
+              shirt: '#7A7A6A', pants: '#4A4A3A', shoes: '#2B1B1B' },
+    hi: 'Знания древних сильнее любого меча. Хочешь мудрости?' },
+
+  // ❄️ Город Северный
+  { name: 'Мэр Морозко', role: 'mayor', style: 'cap', city: 'north',
+    outfit: { skin: '#FFE8D0', hair: '#E8E8F0', eye: '#2B6CB0',
+              shirt: '#4A7AB0', pants: '#2F4F8F', shoes: '#3A3A4A' },
+    hi: 'На севере сурово: волчьи стаи подходят всё ближе к стенам...' },
+  { name: 'Торговка Снежана', role: 'merchant', style: 'bun', city: 'north',
+    outfit: { skin: '#FFE8D0', hair: '#D4A060', eye: '#2B6CB0',
+              shirt: '#6A9AD0', pants: '#3A5A8A', shoes: '#4A4A6A' },
+    shopTitle: '🏪 Лавка Северного',
+    hi: 'Тёплые вещи и провизия для северных походов!' },
+  { name: 'Тренер Вьюга', role: 'trainer', style: 'long', city: 'north', trains: 'bow',
+    outfit: { skin: '#FFE8D0', hair: '#B0C0D0', eye: '#2B6CB0',
+              shirt: '#5A8AC0', pants: '#2F4F8F', shoes: '#3A3A4A' },
+    hi: 'Вьюга заметает следы, но моя стрела всегда находит цель. Научу!' },
+
+  // ⛏️ Город Подземный
+  { name: 'Старшина Кром', role: 'mayor', style: 'dwarf', city: 'under',
+    outfit: { skin: '#E8B88A', hair: '#5A3A2A', eye: '#3A3A4A',
+              shirt: '#6A5A4A', pants: '#4A3F2F', shoes: '#2A1F14' },
+    hi: 'Наша шахта кормит весь город, но в штольнях завелись пауки...' },
+  { name: 'Торговец Штык', role: 'merchant', style: 'dwarf', city: 'under',
+    outfit: { skin: '#E8B88A', hair: '#3A2A1A', eye: '#3A3A4A',
+              shirt: '#7A6A55', pants: '#4A4A3A', shoes: '#2A1F14' },
+    shopTitle: '🏪 Лавка Подземного',
+    hi: 'Кирки, факелы и всё для шахтёра — налетай!' },
+  { name: 'Тренер Бур', role: 'trainer', style: 'dwarf', city: 'under', trains: 'sword',
+    outfit: { skin: '#E8B88A', hair: '#CC6633', eye: '#3A3A4A',
+              shirt: '#5A4A3A', pants: '#3A3228', shoes: '#2A1F14' },
+    hi: 'В тесных штольнях размахнуться негде — учись бить коротко и точно!' }
+];
+
+// Домики горожан: мэр у южной дороги площади,
+// торговец — у западной, тренер — у восточной (BASE города = 3, ноги на 4.5)
+const CITY_HOMES = [
+  // cx, cz городов: steel 135,110 / gold -120,-130 / ancient 150,-80 / north -80,150 / under 0,-120
+  { x: 135, z: 115, y: 4.5 }, { x: 130, z: 110, y: 4.5 }, { x: 140, z: 110, y: 4.5 },
+  { x: -120, z: -125, y: 4.5 }, { x: -125, z: -130, y: 4.5 }, { x: -115, z: -130, y: 4.5 },
+  { x: 150, z: -75, y: 4.5 }, { x: 145, z: -80, y: 4.5 }, { x: 155, z: -80, y: 4.5 },
+  { x: -80, z: 155, y: 4.5 }, { x: -85, z: 150, y: 4.5 }, { x: -75, z: 150, y: 4.5 },
+  { x: 0, z: -115, y: 4.5 }, { x: -5, z: -120, y: 4.5 }, { x: 5, z: -120, y: 4.5 }
+];
+
+// ============================================================
 //  🏷️ ТАБЛИЧКА С ИМЕНЕМ
 // ============================================================
 
@@ -414,9 +509,10 @@ export function initNPCs(gameContext) {
   // Логируем для отладки
   console.log(`🏠 Загружено ${HOMES.length} домов для NPC`);
   
-  DEFS.forEach((def, i) => {
+  // Собираем одного жителя и ставим его у домика
+  const spawnNPC = (def, home) => {
     const parts = makeVillager(def);
-    const home = HOMES[i] || { x: 0, z: 0, y: 4.5 };
+    home = home || { x: 0, z: 0, y: 4.5 };
     const npc = {
       ...def, ...parts,
       x: home.x, z: home.z, feet: home.y || 4.5,
@@ -431,11 +527,18 @@ export function initNPCs(gameContext) {
     npc.group.position.set(npc.x, npc.feet, npc.z);
     G.scene.add(npc.group);
     NPCS.push(npc);
-    
+
     // Логируем волшебников для проверки
     if (def.role === 'wizard' || def.trains === 'magic' || def.style === 'wizard') {
       console.log(`🧙 ${def.name} создан на высоте ${npc.feet} (${npc.x}, ${npc.z})`);
     }
+  };
+
+  DEFS.forEach((def, i) => spawnNPC(def, HOMES[i]));
+  // 🏙️ Горожане: мэры, торговцы и тренеры пяти больших городов
+  CITY_DEFS.forEach((def, i) => {
+    spawnNPC(def, CITY_HOMES[i]);
+    if (def.role === 'mayor') console.log(`👑 ${def.name} создан (${CITY_HOMES[i].x}, ${CITY_HOMES[i].z})`);
   });
   
   dlg().addEventListener('click', e => {
@@ -598,7 +701,37 @@ function openWizardDialog(npc) {
   }, 5000);
 }
 
+// 👑 Диалог мэра: показывает следующий шаг цепочки заданий города
+function openMayorDialog(npc) {
+  // Все задания этой цепочки по порядку (steel1..steel5 и т.д.)
+  const chain = QUESTS.filter(q => q.city === npc.city);
+  // Первое невыполненное задание, которое уже открылось
+  const next = chain.find(q => !questState[q.id].done && (!q.after || questState[q.after].done));
+  document.getElementById('dlgName').textContent = `👑 ${npc.name} — глава города`;
+  document.getElementById('dlgText').textContent = next
+    ? `${npc.hi} Текущее поручение: «${next.text}»`
+    : `${npc.hi} Все поручения выполнены — ты герой нашего города! 🏆`;
+  const btn = document.getElementById('dlgTrade');
+  btn.disabled = false;
+  btn.style.pointerEvents = 'auto';
+  btn.style.cursor = 'pointer';
+  btn.textContent = '📜 Я готов помочь городу!';
+  btn.onclick = () => {
+    emit('cityTalk', npc.city); // квесты-разговоры слушают это событие
+    sfx.quest();
+    dlg().style.display = 'none';
+  };
+  document.getElementById('dlgSecond').style.display = 'none';
+  dlg().style.display = 'flex';
+
+  clearTimeout(window._dialogTimeout);
+  window._dialogTimeout = setTimeout(() => {
+    if (dlg().style.display === 'flex') dlg().style.display = 'none';
+  }, 5000);
+}
+
 export function interactNPC(npc) {
+  if (npc.role === 'mayor') { openMayorDialog(npc); return; }
   if (npc.role === 'merchant') { openShop(npc.shopTitle || '🏪 Лавка Тихона', npc.items || SHOP_ITEMS); return; }
   if (npc.role === 'wizard' && npc.trains) { openWizardDialog(npc); return; }
   if (npc.role === 'wizard') { openShop('🧙 Зелья Мерлина', WIZARD_ITEMS); return; }

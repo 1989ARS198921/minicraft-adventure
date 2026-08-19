@@ -120,7 +120,52 @@ export const QUESTS = [
   { id: 'dragonHunt', text: 'Увидь охоту дракона 🐉🔥' },
   { id: 'elf_visit', text: 'Поговори с эльфийским мэром 🧝' },
   { id: 'dwarf_visit', text: 'Поговори с гномьим старейшиной ⛏️' },
-  { id: 'mage_visit', text: 'Поговори с главой магов 🔮' }
+  { id: 'mage_visit', text: 'Поговори с главой магов 🔮' },
+
+  // ============================================================
+  //  10. ПЯТЬ БОЛЬШИХ ГОРОДОВ (найди каждый!)
+  // ============================================================
+  { id: 'citySteel',   text: 'Найди Город Стальной ⚙️' },
+  { id: 'cityGold',    text: 'Найди Город Золотой 💰' },
+  { id: 'cityAncient', text: 'Найди Город Древний 🏛️' },
+  { id: 'cityNorth',   text: 'Найди Город Северный ❄️' },
+  { id: 'cityUnder',   text: 'Найди Город Подземный ⛏️' },
+  { id: 'cityAll',     text: 'Посети все 5 больших городов 🏙️', need: 5 },
+
+  // ============================================================
+  //  11. ЦЕПОЧКИ ЗАДАНИЙ ГОРОДОВ (по 5 шагов, открываются по очереди!)
+  //  after = какое задание нужно выполнить, чтобы этот шаг появился
+  // ============================================================
+  // ⚙️ Стальной: освобождение от орков
+  { id: 'steel1', city: 'steel', need: 5, text: '⚙️ Стальной: Прогони орков от стен' },
+  { id: 'steel2', city: 'steel', after: 'steel1', text: '⚙️ Стальной: Донеси весть мэру Сталивару' },
+  { id: 'steel3', city: 'steel', after: 'steel2', need: 10, text: '⚙️ Стальной: Добудь 10 камня для армии' },
+  { id: 'steel4', city: 'steel', after: 'steel3', text: '⚙️ Стальной: Победи Короля гоблинов 👑' },
+  { id: 'steel5', city: 'steel', after: 'steel4', text: '⚙️ Стальной: Вернись к мэру — стань героем!' },
+  // 💰 Золотой: богатство и скелеты пустыни
+  { id: 'gold1', city: 'gold', need: 5, text: '💰 Золотой: Добудь 5 золотой руды для казны' },
+  { id: 'gold2', city: 'gold', after: 'gold1', text: '💰 Золотой: Поговори с мэром Златаном' },
+  { id: 'gold3', city: 'gold', after: 'gold2', need: 10, text: '💰 Золотой: Победи 10 скелетов в пустыне' },
+  { id: 'gold4', city: 'gold', after: 'gold3', text: '💰 Золотой: Добудь алмаз для сокровищницы 💎' },
+  { id: 'gold5', city: 'gold', after: 'gold4', text: '💰 Золотой: Вернись к мэру за наградой!' },
+  // 🏛️ Древний: тайны руин
+  { id: 'ancient1', city: 'ancient', need: 5, text: '🏛️ Древний: Изгони 5 призраков из руин' },
+  { id: 'ancient2', city: 'ancient', after: 'ancient1', text: '🏛️ Древний: Поговори с Хранителем Старом' },
+  { id: 'ancient3', city: 'ancient', after: 'ancient2', text: '🏛️ Древний: Найди древнюю каменоломню 🕯️' },
+  { id: 'ancient4', city: 'ancient', after: 'ancient3', text: '🏛️ Древний: Победи Некроманта 💀' },
+  { id: 'ancient5', city: 'ancient', after: 'ancient4', text: '🏛️ Древний: Вернись к Хранителю!' },
+  // ❄️ Северный: волчья угроза
+  { id: 'north1', city: 'north', need: 5, text: '❄️ Северный: Победи 5 волков у стен' },
+  { id: 'north2', city: 'north', after: 'north1', text: '❄️ Северный: Поговори с мэром Морозко' },
+  { id: 'north3', city: 'north', after: 'north2', need: 10, text: '❄️ Северный: Добудь 10 снега для укреплений' },
+  { id: 'north4', city: 'north', after: 'north3', text: '❄️ Северный: Победи Ледяного тролля 🧊' },
+  { id: 'north5', city: 'north', after: 'north4', text: '❄️ Северный: Вернись к мэру — стань героем севера!' },
+  // ⛏️ Подземный: шахтёрские дела
+  { id: 'under1', city: 'under', need: 10, text: '⛏️ Подземный: Добудь 10 угля для шахт' },
+  { id: 'under2', city: 'under', after: 'under1', text: '⛏️ Подземный: Поговори со старшиной Кромом' },
+  { id: 'under3', city: 'under', after: 'under2', need: 10, text: '⛏️ Подземный: Победи 10 пауков в штольнях' },
+  { id: 'under4', city: 'under', after: 'under3', text: '⛏️ Подземный: Победи Каменного голема 🗿' },
+  { id: 'under5', city: 'under', after: 'under4', text: '⛏️ Подземный: Вернись к старшине за наградой!' }
 ];
 
 // ============================================================
@@ -142,7 +187,8 @@ export function renderQuests() {
   const list = qList();
   if (!list) return;
   
-  list.innerHTML = QUESTS.map(q => {
+  // Шаги цепочек прячем, пока не выполнен предыдущий шаг
+  list.innerHTML = QUESTS.filter(q => !q.after || questState[q.after].done).map(q => {
     const st = questState[q.id];
     const progress = q.need ? ` (${Math.min(st.count, q.need)}/${q.need})` : '';
     return `<li class="${st.done ? 'done' : ''}">${st.done ? '✅' : '⬜'} ${q.text}${progress}</li>`;
@@ -161,6 +207,8 @@ export function questProgress(id, n = 1) {
   const q = QUESTS.find(q => q.id === id);
   const st = questState[id];
   if (!q || st.done) return;
+  // Задание из цепочки закрыто, пока не выполнен предыдущий шаг
+  if (q.after && !(questState[q.after] && questState[q.after].done)) return;
   
   st.count += n;
   if (st.count >= (q.need || 1)) {
@@ -198,6 +246,12 @@ export function initQuests() {
     if (type === 'herb') questProgress('collect_herbs_30');
     if (type === 'flower') questProgress('collect_flowers_20');
     if (type === 'mushroom') questProgress('collect_mushrooms_20');
+    // 🏙️ Шаги городских цепочек на добычу
+    if (type === 'stone') questProgress('steel3');
+    if (type === 'goldOre') questProgress('gold1');
+    if (type === 'diamondOre') questProgress('gold4');
+    if (type === 'snow') questProgress('north3');
+    if (type === 'coalOre') questProgress('under1');
   });
   
   on('blockPlaced', () => {
@@ -251,6 +305,13 @@ export function initQuests() {
     if (kind === 'zombie') questProgress('zombie_hunter');
     if (kind === 'bat') questProgress('bat_hunter');
     if (kind === 'goblinKing') questProgress('kingKill');
+    // 🏙️ Шаги городских цепочек на победы
+    if (kind === 'orc') questProgress('steel1');
+    if (kind === 'skeleton') questProgress('gold3');
+    if (kind === 'ghost') questProgress('ancient1');
+    if (kind === 'wolf') questProgress('north1');
+    if (kind === 'spider') questProgress('under3');
+    if (kind === 'goblinKing') questProgress('steel4');
   });
   
   // ============================================================
@@ -268,6 +329,10 @@ export function initQuests() {
     if (kind === 'ice_dragon') questProgress('ice_dragon_slayer');
     if (kind === 'fire_elemental') questProgress('fire_elemental_slayer');
     if (kind === 'dark_knight') questProgress('dark_knight_slayer');
+    // 🏙️ Боссы в городских цепочках
+    if (kind === 'necromancer') questProgress('ancient4');
+    if (kind === 'ice_troll') questProgress('north4');
+    if (kind === 'stone_golem') questProgress('under4');
     // Проверка на всех боссов
     checkAllBosses();
   });
@@ -296,6 +361,12 @@ export function initQuests() {
     if (id === 'mountain_village') questProgress('find_mountain_village');
     if (id === 'fishing_village') questProgress('find_fishing_village');
     if (id === 'magic_village') questProgress('find_magic_village');
+    // 🏙️ Большие города
+    if (id === 'city_steel')   { questProgress('citySteel'); questProgress('cityAll'); }
+    if (id === 'city_gold')    { questProgress('cityGold'); questProgress('cityAll'); }
+    if (id === 'city_ancient') { questProgress('cityAncient'); questProgress('cityAll'); }
+    if (id === 'city_north')   { questProgress('cityNorth'); questProgress('cityAll'); }
+    if (id === 'city_under')   { questProgress('cityUnder'); questProgress('cityAll'); }
     checkAllVillages();
   });
   
@@ -308,7 +379,14 @@ export function initQuests() {
     if (allDone) questProgress('explore_all_villages');
   }
   
-  on('dungeon', () => questProgress('dungeon'));
+  on('dungeon', () => { questProgress('dungeon'); questProgress('ancient3'); });
+
+  // 👑 Разговор с мэром города: двигает «речевые» шаги цепочки
+  // (шаг 2 — донести весть, шаг 5 — вернуться за наградой)
+  on('cityTalk', city => {
+    questProgress(city + '2');
+    questProgress(city + '5');
+  });
   // ============================================================
   //  6. СНАРЯЖЕНИЕ И НАВЫКИ
   // ============================================================
