@@ -10,6 +10,7 @@ import { CONFIG, TRANSPARENT, SMALL, WALKTHROUGH } from './config.js';
 import { chunkMat, chunkMatGlass, chunkMatWater, TILES, FLOWER_RED, FLOWER_YELLOW } from './textures.js';
 import { stampSettlements, inAnyVillage } from './village.js';
 import { stampDungeon } from './dungeon.js';
+import { stampCities } from './surface_cities.js';
 import { emit } from './bus.js';
 
 let G = null; // игровой контекст (даёт main.js при инициализации)
@@ -276,6 +277,8 @@ function genChunkData(cx, cz) {
   stampSettlements(data, cx, cz);
   // 🕯️ Штампуем каменоломню гоблинов: яма, лестница, трон, руды
   stampDungeon(data, cx, cz);
+  // 🏙️ Штампуем большие города: стены, дома, площадь с фонтаном
+  stampCities(data, cx, cz);
   // Применяем то, что игрок наломал/настроил
   const d = deltas[ckey(cx, cz)];
   if (d) for (const k in d) {

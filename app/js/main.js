@@ -30,6 +30,7 @@ import { initDragons, updateDragons } from './dragons.js';
 import { initMobs, updateMobs } from './mobs.js';
 import { initMagic, updateMagic } from './magic.js';
 import { initDungeon, updateDungeon, DUNGEON_TORCHES } from './dungeon.js';
+import { CITY_TORCHES } from './surface_cities.js';
 import { VILLAGE_TORCHES, ELF_TORCHES, ORC_TORCHES } from './village.js';
 import { setUseItemHandler } from './ui.js';
 import { initCities, getCityPositions } from './cities.js';
@@ -495,6 +496,8 @@ for (const t of [...getTorches()])
     getTorches().splice(getTorches().indexOf(t), 1);
   }
 for (const [x, y, z] of DUNGEON_TORCHES) addTorch(x, y, z, true);
+// 🏮 Фонари пяти больших городов
+for (const [x, y, z] of CITY_TORCHES) addTorch(x, y, z, true);
 updateTorchLights();
 updateMinimap();
 updateInvUI();
