@@ -16,7 +16,13 @@ export const SETTLEMENTS = [
   { id: 'mountain_village', name: 'Горная', x0: -70, z0: -50, x1: -50, z1: -30 },
   { id: 'fishing_village', name: 'Рыбацкая', x0: -90, z0: 100, x1: -70, z1: 120 },
   { id: 'magic_village', name: 'Магическая', x0: 110, z0: -110, x1: 130, z1: -90 },
-  { id: 'mining_village', name: 'Шахтёрская', x0: 40, z0: -130, x1: 60, z1: -110 }
+  { id: 'mining_village', name: 'Шахтёрская', x0: 40, z0: -130, x1: 60, z1: -110 },
+  // ===== ПЯТЬ БОЛЬШИХ ГОРОДОВ (штампуются в surface_cities.js) =====
+  { id: 'city_steel',   name: '⚙️ Стальной',   x0: 118,  z0: 93,   x1: 152,  z1: 127  },
+  { id: 'city_gold',    name: '💰 Золотой',    x0: -137, z0: -147, x1: -103, z1: -113 },
+  { id: 'city_ancient', name: '🏛️ Древний',   x0: 133,  z0: -97,  x1: 167,  z1: -63  },
+  { id: 'city_north',   name: '❄️ Северный',   x0: -97,  z0: 133,  x1: -63,  z1: 167  },
+  { id: 'city_under',   name: '⛏️ Подземный',  x0: -17,  z0: -137, x1: 17,   z1: -103 }
 ];
 // Старый короткий псевдоним для нашей деревни
 export const VILLAGE = SETTLEMENTS[0];
@@ -154,7 +160,7 @@ function stampHouse(data, x0, z0, hx, hz, style = 'wood') {
           continue;
         }
         // Окошки-стёклышки на боковых стенах
-        if (y === BASE + 2 && ((dz === 2 && (dx === 0 || dx === 4)) || (dz === 4 && (dx === 1 || dx === 3)))) {
+        if (y === BASE + 2 && ((dz === 0 && (dx === 0 || dx === 4)) || (dz === 4 && (dx === 1 || dx === 3)))) {
           put(data, x0, z0, hx + dx, y, hz + dz, 'glass');
           continue;
         }

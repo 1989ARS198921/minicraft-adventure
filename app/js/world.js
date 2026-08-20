@@ -10,6 +10,7 @@ import { CONFIG, TRANSPARENT, SMALL, WALKTHROUGH } from './config.js';
 import { chunkMat, chunkMatGlass, chunkMatWater, TILES, FLOWER_RED, FLOWER_YELLOW } from './textures.js';
 import { stampSettlements, inAnyVillage } from './village.js';
 import { stampDungeon } from './dungeon.js';
+import { stampCities } from './surface_cities.js';
 import { emit } from './bus.js';
 
 let G = null; // игровой контекст (даёт main.js при инициализации)
@@ -38,6 +39,12 @@ export function setSeed(s) {
   seedOffZ = ((s >> 8) % 1000) * 0.9;
 }
 
+
+function generateChunk(data, cx, cz) {
+    generateUnderground(data, cx, cz);  // Уровень -30..-10
+    generateSurface(data, cx, cz);       // Уровень 0..40 (уже есть)
+    generateSkyWorld(data, cx, cz);     // Уровень 60..120
+}
 // Детерминированный генератор по координатам чанка
 function chunkRand(cx, cz, i) {
   let h = G.seed ^ Math.imul(cx, 374761393) ^ Math.imul(cz, 668265263) ^ Math.imul(i, 974634211);
@@ -270,6 +277,8 @@ function genChunkData(cx, cz) {
   stampSettlements(data, cx, cz);
   // 🕯️ Штампуем каменоломню гоблинов: яма, лестница, трон, руды
   stampDungeon(data, cx, cz);
+  // 🏙️ Штампуем большие города: стены, дома, площадь с фонтаном
+  stampCities(data, cx, cz);
   // Применяем то, что игрок наломал/настроил
   const d = deltas[ckey(cx, cz)];
   if (d) for (const k in d) {
