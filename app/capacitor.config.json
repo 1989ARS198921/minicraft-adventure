@@ -1,0 +1,16 @@
+{
+  "appId": "com.ars1989.minicraft",
+  "appName": "MiniCraft Adventure",
+  "webDir": "./www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#101820",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP"
+    }
+  }
+}

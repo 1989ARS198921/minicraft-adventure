@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <defs>
+    <!-- Небесный градиент -->
+    <linearGradient id="sky" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E88E5"/>
+      <stop offset="50%" style="stop-color:#64B5F6"/>
+      <stop offset="100%" style="stop-color:#81C784"/>
+    </linearGradient>
+    <!-- Градиент земли -->
+    <linearGradient id="ground" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7CB342"/>
+      <stop offset="30%" style="stop-color:#8B5A2B"/>
+      <stop offset="100%" style="stop-color:#5D4037"/>
+    </linearGradient>
+    <!-- Тень для текста -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="3" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  
+  <!-- Фон: небо -->
+  <rect width="1024" height="500" fill="url(#sky)"/>
+  
+  <!-- Солнце -->
+  <circle cx="850" cy="80" r="60" fill="#FFD54F" opacity="0.9"/>
+  <circle cx="850" cy="80" r="75" fill="#FFD54F" opacity="0.2"/>
+  
+  <!-- Облака -->
+  <g fill="white" opacity="0.85">
+    <rect x="120" y="40" width="160" height="40" rx="20"/>
+    <rect x="140" y="25" width="90" height="35" rx="17"/>
+    <rect x="500" y="60" width="140" height="36" rx="18"/>
+    <rect x="520" y="48" width="80" height="30" rx="15"/>
+    <rect x="750" y="120" width="120" height="30" rx="15"/>
+  </g>
+  
+  <!-- Дальние горы -->
+  <polygon points="0,320 80,240 160,320" fill="#5C6BC0" opacity="0.4"/>
+  <polygon points="120,320 220,220 320,320" fill="#3949AB" opacity="0.35"/>
+  <polygon points="600,320 750,200 900,320" fill="#5C6BC0" opacity="0.4"/>
+  <polygon points="800,320 920,230 1024,320" fill="#3949AB" opacity="0.35"/>
+  
+  <!-- Холмы -->
+  <path d="M0,380 Q120,310 256,360 Q400,300 512,350 Q650,290 768,340 Q900,300 1024,350 L1024,500 L0,500 Z" fill="#66BB6A" opacity="0.7"/>
+  
+  <!-- Земля -->
+  <rect y="350" width="1024" height="150" fill="url(#ground)"/>
+  
+  <!-- Пиксельные элементы: деревья слева -->
+  <g>
+    <!-- Дерево 1 -->
+    <rect x="60" y="260" width="16" height="90" fill="#6D4C41"/>
+    <rect x="30" y="200" width="76" height="70" rx="8" fill="#43A047"/>
+    <rect x="40" y="185" width="56" height="30" rx="6" fill="#66BB6A"/>
+    
+    <!-- Дерево 2 -->
+    <rect x="160" y="270" width="12" height="80" fill="#5D4037"/>
+    <rect x="138" y="215" width="56" height="55" rx="6" fill="#388E3C"/>
+    <rect x="148" y="205" width="36" height="25" rx="5" fill="#4CAF50"/>
+  </g>
+  
+  <!-- Пиксельные элементы: блоки справа -->
+  <g>
+    <!-- Стопка блоков -->
+    <rect x="800" y="300" width="50" height="50" fill="#8B5A2B" stroke="#6D4C41" stroke-width="2"/>
+    <rect x="800" y="300" width="50" height="8" fill="#7CB342"/>
+    
+    <rect x="800" y="250" width="50" height="50" fill="#9E9E9E" stroke="#757575" stroke-width="2"/>
+    
+    <rect x="855" y="300" width="50" height="50" fill="#8B5A2B" stroke="#6D4C41" stroke-width="2"/>
+    <rect x="855" y="300" width="50" height="8" fill="#7CB342"/>
+    
+    <rect x="855" y="250" width="50" height="50" fill="#B7422F" stroke="#8C2F24" stroke-width="2"/>
+    
+    <rect x="855" y="200" width="50" height="50" fill="#8B5A2B" stroke="#6D4C41" stroke-width="2"/>
+    <rect x="855" y="200" width="50" height="8" fill="#7CB342"/>
+  </g>
+  
+  <!-- Пиксельный персонаж по центру -->
+  <g transform="translate(460, 275)">
+    <!-- Тело -->
+    <rect x="20" y="30" width="20" height="30" fill="#1565C0"/>
+    <!-- Голова -->
+    <rect x="18" y="10" width="24" height="22" fill="#FFCC80"/>
+    <!-- Глаза -->
+    <rect x="24" y="18" width="4" height="4" fill="#3E2723"/>
+    <rect x="34" y="18" width="4" height="4" fill="#3E2723"/>
+    <!-- Ноги -->
+    <rect x="20" y="60" width="8" height="20" fill="#455A64"/>
+    <rect x="32" y="60" width="8" height="20" fill="#455A64"/>
+    <!-- Меч в руке -->
+    <rect x="45" y="15" width="4" height="40" fill="#B0BEC5"/>
+    <rect x="42" y="10" width="10" height="8" fill="#795548"/>
+  </g>
+  
+  <!-- Монстр (скелет) справа вдали -->
+  <g transform="translate(700, 285)" opacity="0.8">
+    <rect x="10" y="5" width="16" height="16" fill="#ECEFF1"/>
+    <rect x="14" y="10" width="4" height="4" fill="#37474F"/>
+    <rect x="22" y="10" width="4" height="4" fill="#37474F"/>
+    <rect x="12" y="22" width="4" height="20" fill="#CFD8DC"/>
+    <rect x="20" y="22" width="4" height="20" fill="#CFD8DC"/>
+    <rect x="8" y="24" width="4" height="16" fill="#CFD8DC"/>
+  </g>
+  
+  <!-- Логотип -->
+  <g filter="url(#shadow)">
+    <!-- MiniCraft -->
+    <text x="512" y="120" font-family="'Arial Black', Arial, sans-serif" font-size="80" font-weight="bold" fill="white" text-anchor="middle" stroke="#1B5E20" stroke-width="5" paint-order="stroke">MiniCraft</text>
+    <!-- Adventure -->
+    <text x="512" y="185" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="bold" fill="#FFD54F" text-anchor="middle" stroke="#E65100" stroke-width="2" paint-order="stroke">Adventure</text>
+  </g>
+  
+  <!-- Подзаголовок -->
+  <text x="512" y="220" font-family="Arial, sans-serif" font-size="22" fill="white" text-anchor="middle" opacity="0.9" filter="url(#shadow)">3D RPG-песочница с открытым миром, квестами и строительством</text>
+  
+  <!-- Декоративная линия -->
+  <line x1="350" y1="240" x2="674" y2="240" stroke="#FFD54F" stroke-width="3" opacity="0.7"/>
+  
+  <!-- Нижняя полоса с тегами -->
+  <g transform="translate(0, 460)">
+    <rect x="0" y="0" width="1024" height="40" fill="rgba(0,0,0,0.3)" rx="0"/>
+    <text x="100" y="26" font-family="Arial, sans-serif" font-size="16" fill="white" opacity="0.8">3D-мир</text>
+    <text x="240" y="26" font-family="Arial, sans-serif" font-size="16" fill="white" opacity="0.8">Квесты</text>
+    <text x="370" y="26" font-family="Arial, sans-serif" font-size="16" fill="white" opacity="0.8">Строительство</text>
+    <text x="550" y="26" font-family="Arial, sans-serif" font-size="16" fill="white" opacity="0.8">Монстры</text>
+    <text x="700" y="26" font-family="Arial, sans-serif" font-size="16" fill="white" opacity="0.8">RPG</text>
+    <text x="820" y="26" font-family="Arial, sans-serif" font-size="16" fill="white" opacity="0.8">Открытый мир</text>
+  </g>
+</svg>

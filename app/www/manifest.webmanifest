@@ -1,0 +1,10 @@
+{
+  "name": "MiniCraft Mobile",
+  "short_name": "MiniCraft",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#101820",
+  "theme_color": "#101820",
+  "icons": []
+}

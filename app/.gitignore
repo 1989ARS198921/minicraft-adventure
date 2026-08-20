@@ -1,0 +1,30 @@
+# Secrets
+gradle.properties
+minicraft-release.keystore
+*.keystore
+google-services.json
+
+# Build outputs
+app/build/
+app/android/app/build/
+app/android/build/
+app/android/app/release/
+app/android/app/debug/
+app/android/app/release/app-release.apk
+app/android/app/release/app-release-bundle.aab
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Dependencies
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Capacitor
+.capacitor/
