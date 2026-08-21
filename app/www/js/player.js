@@ -67,16 +67,16 @@ function isSolidAt(x, y, z) {
 function getGroundHeight(x, z, maxY = 40) {
   // Сначала проверяем блоки мира
   const worldGround = groundHeight(Math.floor(x), Math.floor(z), maxY);
-  if (worldGround > -10) return worldGround;
+  if (worldGround > -40) return worldGround;
   
   // Затем проверяем блоки городов сверху вниз
-  for (let y = Math.floor(maxY); y >= -10; y--) {
+  for (let y = Math.floor(maxY); y >= -40; y--) {
     if (isBlockAt(Math.floor(x), y, Math.floor(z))) {
       return y + 1;
     }
   }
   
-  return -10;
+  return -40;
 }
 
 // Один кадр физики: движение + гравитация/полёт
@@ -209,7 +209,7 @@ export function stepPlayer(G, dt) {
   }
 
   // Страховка: если провалились под мир — телепортируем на ближайший безопасный блок
-  if (p.feet < -10) {
+  if (p.feet < -40) {
     const safeX = Math.max(-CONFIG.WORLD_LIMIT, Math.min(CONFIG.WORLD_LIMIT, p.x));
     const safeZ = Math.max(-CONFIG.WORLD_LIMIT, Math.min(CONFIG.WORLD_LIMIT, p.z));
     const safeGround = getGroundHeight(safeX, safeZ);
