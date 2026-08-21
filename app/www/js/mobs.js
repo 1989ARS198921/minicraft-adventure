@@ -109,7 +109,9 @@ const KINDS = {
   bat: { hp: 20, dmg: 3, speed: 4.0, aggro: 5, reach: 1.0, cool: 0.8,
     drop: 'mushroom', dropN: 1, name: 'Летучая мышь', hitMsg: '🦇 Мышь укусила!', color: 0x4A3A3A, size: 0.4 },
   zombie: { hp: 45, dmg: 6, speed: 1.8, aggro: 10, reach: 1.5, cool: 2.0,
-    drop: 'goldOre', dropN: 1, name: 'Зомби', hitMsg: '🧟 Зомби ударил!', color: 0x4A6A3A, size: 1.0 }
+    drop: 'goldOre', dropN: 1, name: 'Зомби', hitMsg: '🧟 Зомби ударил!', color: 0x4A6A3A, size: 1.0 },
+  vampire: { hp: 55, dmg: 9, speed: 3.0, aggro: 12, reach: 1.6, cool: 1.4,
+    drop: 'diamondOre', dropN: 1, name: 'Вампир', hitMsg: '🧛 Вампир укусил!', color: 0x2A0A2A, size: 1.1 }
 };
 
 // ============================================================
@@ -674,9 +676,9 @@ const BIOME_MOBS = {
   plains:    ['orc', 'zombie', 'goblin', 'wolf', 'orc'],
   desert:    ['skeleton', 'skeleton', 'zombie', 'bat', 'spider'],
   snow:      ['ghost', 'troll', 'skeleton', 'skeleton', 'wolf'],
-  mountains: ['troll', 'orc', 'skeleton', 'bat', 'skeleton']
+  mountains: ['troll', 'orc', 'skeleton', 'bat', 'vampire', 'skeleton']
 };
-const CAVE_MOBS = ['skeleton', 'zombie', 'spider', 'bat', 'slime', 'ghost'];
+const CAVE_MOBS = ['skeleton', 'zombie', 'spider', 'bat', 'slime', 'ghost', 'vampire'];
 const SKY_MOBS  = ['ghost', 'bat'];
 
 function planSpawns() {
