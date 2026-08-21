@@ -279,6 +279,9 @@ function genChunkData(cx, cz) {
   stampDungeon(data, cx, cz);
   // 🏙️ Штампуем большие города: стены, дома, площадь с фонтаном
   stampCities(data, cx, cz);
+  // 🕳️🌥️ Подземелье и небесные острова (классические скрипты underground.js/skyworld.js)
+  try { if (typeof generateUnderground === 'function') generateUnderground(data, cx, cz); } catch (e) { /* мир важнее */ }
+  try { if (typeof generateSkyWorld === 'function') generateSkyWorld(data, cx, cz); } catch (e) { /* мир важнее */ }
   // Применяем то, что игрок наломал/настроил
   const d = deltas[ckey(cx, cz)];
   if (d) for (const k in d) {
@@ -307,7 +310,9 @@ const SHAPES = {
   doorTop: [{ x0: 0.4, y0: 0, z0: 0, x1: 0.6, y1: 1, z1: 1 }],
   flower:  [{ x0: 0.35, y0: 0, z0: 0.35, x1: 0.65, y1: 0.5, z1: 0.65 }],
   mushroom:[{ x0: 0.3, y0: 0, z0: 0.3, x1: 0.7, y1: 0.35, z1: 0.7 }],
-  bush:    [{ x0: 0.15, y0: 0, z0: 0.15, x1: 0.85, y1: 0.6, z1: 0.85 }]
+  bush:    [{ x0: 0.15, y0: 0, z0: 0.15, x1: 0.85, y1: 0.6, z1: 0.85 }],
+  glowshroom:[{ x0: 0.3, y0: 0, z0: 0.3, x1: 0.7, y1: 0.35, z1: 0.7 }],
+  rail:    [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 0.15, z1: 1 }]
 };
 const CUBE = [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 }];
 
@@ -316,7 +321,7 @@ const CUBE = [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 }];
 // всё, что глубже под ним, — в тени земли (пещеры тёмные!) 🕳️
 function pushBlock(bag, x, y, z, type, skyTop) {
   // Какая плитка атласа на верх/бок/низ этого блока
-  let [ti, ts, tb] = TILES[type];
+  let [ti, ts, tb] = TILES[type] || TILES.stone; // неизвестный блок рисуем камнем
   // Цветы бывают красные и жёлтые — сюрприз от генератора!
   if (type === 'flower' && blockRand(x, 777, z) >= 0.5) { ti = ts = tb = FLOWER_YELLOW; }
   const small = SMALL.has(type); // фигуркам рисуем все грани (они крошечные)
@@ -328,9 +333,9 @@ function pushBlock(bag, x, y, z, type, skyTop) {
       if (!small && neighborHides(type, x + f.n[0], y + f.n[1], z + f.n[2])) continue;
       // Каждая сторона светит по-своему: верх яркий, низ тёмный — объём!
       const faceShade = f.n[1] === 1 ? 1.0 : f.n[1] === -1 ? 0.55 : (f.n[0] !== 0 ? 0.82 : 0.7);
-      // Узор грани: номер плитки → прямоугольник в атласе (5×5)
+      // Узор грани: номер плитки → прямоугольник в атласе (5×6)
       const tile = f.n[1] === 1 ? ti : f.n[1] === -1 ? tb : ts;
-      const u0 = (tile % 5) / 5, v0 = 1 - (Math.floor(tile / 5) + 1) / 5;
+      const u0 = (tile % 5) / 5, v0 = 1 - (Math.floor(tile / 5) + 1) / 6; // атлас 5×6
       // Мягкая тень в углах (AO): если рядом с углом стоят блоки — затемняем
       const px = x + f.n[0], py = y + f.n[1], pz = z + f.n[2];
       const ax = [0, 1, 2].filter(a => f.n[a] === 0); // две оси вдоль грани
@@ -344,7 +349,7 @@ function pushBlock(bag, x, y, z, type, skyTop) {
           const s2 = isOpaque(px + o2[0], py + o2[1], pz + o2[2]) ? 1 : 0;
           const cc = isOpaque(px + o1[0] + o2[0], py + o1[1] + o2[1], pz + o1[2] + o2[2]) ? 1 : 0;
           const ao = (s1 && s2) ? 0 : 3 - (s1 + s2 + cc);
-          shade *= 0.45 + 0.55 * ao / 3; // от 45% в тёмном углу до 100%
+          shade *= 0.45 + 0.55 * ao / 3; // от 45% в тёмного угла до 100%
         }
         // угол коробочки: растягиваем 0..1 кубика под размер фигурки
         bag.pos.push(
@@ -360,7 +365,7 @@ function pushBlock(bag, x, y, z, type, skyTop) {
       // Горизонталь и вертикаль грани зависят от того, куда она смотрит
       const uw = f.n[0] !== 0 ? d : w;          // бок по X меряем глубиной
       const vh = f.n[1] !== 0 ? d : h;          // верх/низ меряем глубиной
-      bag.uv.push(u0, v0, u0 + 0.2 * uw, v0, u0 + 0.2 * uw, v0 + 0.2 * vh, u0, v0 + 0.2 * vh);
+      bag.uv.push(u0, v0, u0 + 0.2 * uw, v0, u0 + 0.2 * uw, v0 + (1 / 6) * vh, u0, v0 + (1 / 6) * vh);
       bag.idx.push(bag.vc, bag.vc + 1, bag.vc + 2, bag.vc, bag.vc + 2, bag.vc + 3);
       bag.vc += 4;
     }
