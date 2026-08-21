@@ -111,10 +111,11 @@ export function stepPlayer(G, dt) {
     const hasFloor = g <= p.feet + STEP;
     
     // Проверяем, есть ли место для головы
+    // (isSolidAt: вода, цветы и двери — НЕ твёрдые, сквозь них можно!)
     const headY = Math.floor(g + 1.5);
     const bodyY = Math.floor(g + 0.5);
-    const headBlock = isBlockAt(Math.floor(nx), headY, Math.floor(nz));
-    const bodyBlock = isBlockAt(Math.floor(nx), bodyY, Math.floor(nz));
+    const headBlock = isSolidAt(Math.floor(nx), headY, Math.floor(nz));
+    const bodyBlock = isSolidAt(Math.floor(nx), bodyY, Math.floor(nz));
     
     return hasFloor && !bodyBlock && !headBlock;
   };
@@ -162,7 +163,7 @@ export function stepPlayer(G, dt) {
     if (keys['ShiftLeft'] || keys['ShiftRight']) up -= 1;
     p.feet += up * CONFIG.FLY_SPEED * dt;
     
-    if (up > 0 && isBlockAt(Math.floor(p.x), Math.floor(p.feet + 1.75), Math.floor(p.z))) {
+    if (up > 0 && isSolidAt(Math.floor(p.x), Math.floor(p.feet + 1.75), Math.floor(p.z))) {
       p.feet = Math.floor(p.feet + 1.75) - 1.75;
     }
     p.vy = 0;
@@ -184,8 +185,8 @@ export function stepPlayer(G, dt) {
     p.vy -= CONFIG.GRAVITY * dt;
     p.feet += p.vy * dt;
     
-    // Проверка потолка
-    if (p.vy > 0 && isBlockAt(Math.floor(p.x), Math.floor(p.feet + 1.75), Math.floor(p.z))) {
+    // Проверка потолка (только ТВЁРДЫЕ блоки — сквозь воду пролетаем!)
+    if (p.vy > 0 && isSolidAt(Math.floor(p.x), Math.floor(p.feet + 1.75), Math.floor(p.z))) {
       p.feet = Math.floor(p.feet + 1.75) - 1.75;
       p.vy = 0;
     }
