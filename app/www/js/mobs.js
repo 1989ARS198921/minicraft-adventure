@@ -571,9 +571,46 @@ function makeBossModel(bossData) {
 //  🎮 СОЗДАНИЕ МОНСТРОВ
 // ============================================================
 
-function spawnMob(type, x, y, z) {
-    const mob = window.spawnMob(type, x, y, z); // mobs_integration.js
-    mob.ai = createAIForMob(mob); // ai_mobs.js
+// Спавн монстра. Два варианта вызова:
+//   spawnMob(тип, x, z)                      — обычный монстр
+//   spawnMob(босс.id, босс.x, босс.z, hp, true, босс) — босс
+function spawnMob(type, x, z, hp, isBoss, bossData) {
+    const boss = (isBoss && bossData) ? bossData : null;
+    const src = boss || KINDS[type];
+    if (!src) return null;
+    const kind = boss ? boss.id : type;
+    const built = boss ? makeBossModel(boss) : makePixelMob(type);
+    if (!built || !built.group) return null;
+
+    // Ставим монстра ногами на землю
+    const gy = groundHeight(Math.floor(x), Math.floor(z));
+    const feet = gy > 0 ? gy : 5;
+
+    const mob = {
+        kind: kind,
+        name: src.name || kind,
+        x: x, z: z, feet: feet,
+        hp: hp || src.hp, maxHp: hp || src.hp,
+        dmg: src.dmg, reach: src.reach || 1.8, cool: src.cool || 1.2,
+        aggro: src.aggro || 12, speed: src.speed || 2.2, speedCur: 0,
+        drop: src.drop || 'goldOre', dropN: src.dropN || 1,
+        hitMsg: src.hitMsg || '👹 Монстр ударил!',
+        size: src.size || 1, isBoss: !!boss, mat: true,
+        group: built.group, armL: built.armL, armR: built.armR,
+        legL: built.legL, legR: built.legR, head: built.head,
+        home: { x: x, z: z }, tx: x, tz: z, wait: Math.random() * 2,
+        phase: Math.random() * 6.28,
+        swingT: 0, coolT: 0, flashT: 0, flashed: false,
+        angry: false, growled: false, dead: false, respawnT: 0
+    };
+
+    built.group.position.set(x, feet, z);
+    if (G && G.scene) G.scene.add(built.group);
+    createHPBar(mob);
+    // Луч атаки (actions.js) узнаёт монстра по userData.mob —
+    // помечаем модель и все её части (включая HP-бар и табличку)
+    built.group.traverse(o => { o.userData.mob = mob; });
+    MOBS.push(mob);
     return mob;
 }
 // ============================================================
