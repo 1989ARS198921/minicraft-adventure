@@ -304,14 +304,14 @@ export function initQuests() {
     if (kind === 'slime') questProgress('slime_hunter');
     if (kind === 'zombie') questProgress('zombie_hunter');
     if (kind === 'bat') questProgress('bat_hunter');
-    if (kind === 'goblinKing') questProgress('kingKill');
+    if (kind === 'goblin_king') questProgress('kingKill');
     // 🏙️ Шаги городских цепочек на победы
     if (kind === 'orc') questProgress('steel1');
     if (kind === 'skeleton') questProgress('gold3');
     if (kind === 'ghost') questProgress('ancient1');
     if (kind === 'wolf') questProgress('north1');
     if (kind === 'spider') questProgress('under3');
-    if (kind === 'goblinKing') questProgress('steel4');
+    if (kind === 'goblin_king') questProgress('steel4');
   });
   
   // ============================================================
