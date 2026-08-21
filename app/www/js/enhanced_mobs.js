@@ -39,7 +39,7 @@ function bodyPart({ w, h, d, color, emissive = 0x000000, transparent = false, op
         return null;
     }
     const geometry = new THREE.BoxGeometry(w, h, d);
-    const material = new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshLambertMaterial({
         color: color,
         emissive: emissive,
         transparent: transparent,
@@ -847,6 +847,87 @@ function createIceDragonModel() {
     return group;
 }
 
+
+// ==================== ВАМПИР ====================
+function createVampireModel() {
+    const group = new THREE.Group();
+    group.userData.type = 'vampire';
+
+    // Плащ (чёрный, широкий)
+    const cloak = bodyPart({ w: 0.55, h: 0.75, d: 0.3, color: 0x1a0a1a });
+    cloak.position.y = 0.55;
+    group.add(cloak);
+
+    // Красная подкладка плаща
+    const lining = bodyPart({ w: 0.4, h: 0.6, d: 0.05, color: 0x8a0a1a });
+    lining.position.set(0, 0.5, -0.17);
+    group.add(lining);
+
+    // Высокий воротник
+    const collarL = bodyPart({ w: 0.1, h: 0.25, d: 0.2, color: 0x2a0a2a });
+    collarL.position.set(-0.2, 0.95, -0.05);
+    collarL.rotation.z = 0.25;
+    group.add(collarL);
+    const collarR = bodyPart({ w: 0.1, h: 0.25, d: 0.2, color: 0x2a0a2a });
+    collarR.position.set(0.2, 0.95, -0.05);
+    collarR.rotation.z = -0.25;
+    group.add(collarR);
+
+    // Бледная голова
+    const head = bodyPart({ w: 0.38, h: 0.38, d: 0.36, color: 0xe8ddd0 });
+    head.position.y = 1.05;
+    group.add(head);
+
+    // Вдовий пик (чёрные волосы)
+    const hair = bodyPart({ w: 0.4, h: 0.12, d: 0.38, color: 0x0a0a0a });
+    hair.position.y = 1.28;
+    group.add(hair);
+    const widowPeak = bodyPart({ w: 0.1, h: 0.08, d: 0.05, color: 0x0a0a0a });
+    widowPeak.position.set(0, 1.22, 0.18);
+    group.add(widowPeak);
+
+    // Красные светящиеся глаза
+    const eyeL = bodyPart({ w: 0.08, h: 0.05, d: 0.02, color: 0xff1a1a, emissive: 0xff0000 });
+    eyeL.position.set(-0.1, 1.08, 0.19);
+    group.add(eyeL);
+    const eyeR = bodyPart({ w: 0.08, h: 0.05, d: 0.02, color: 0xff1a1a, emissive: 0xff0000 });
+    eyeR.position.set(0.1, 1.08, 0.19);
+    group.add(eyeR);
+
+    // Клыки
+    const fangL = bodyPart({ w: 0.04, h: 0.08, d: 0.02, color: 0xffffff });
+    fangL.position.set(-0.06, 0.94, 0.19);
+    group.add(fangL);
+    const fangR = bodyPart({ w: 0.04, h: 0.08, d: 0.02, color: 0xffffff });
+    fangR.position.set(0.06, 0.94, 0.19);
+    group.add(fangR);
+
+    // Руки с когтями
+    const armL = bodyPart({ w: 0.14, h: 0.5, d: 0.14, color: 0x1a0a1a });
+    armL.position.set(-0.35, 0.65, 0.1);
+    armL.rotation.x = -0.5;
+    group.add(armL);
+    const armR = bodyPart({ w: 0.14, h: 0.5, d: 0.14, color: 0x1a0a1a });
+    armR.position.set(0.35, 0.65, 0.1);
+    armR.rotation.x = -0.5;
+    group.add(armR);
+    for (const side of [-1, 1]) {
+        for (let i = 0; i < 3; i++) {
+            const claw = bodyPart({ w: 0.02, h: 0.08, d: 0.02, color: 0xe8ddd0 });
+            claw.position.set(side * 0.35 + (i - 1) * 0.04, 0.42, 0.24);
+            group.add(claw);
+        }
+    }
+
+    // Медальон
+    const amulet = bodyPart({ w: 0.08, h: 0.08, d: 0.02, color: 0xcc0022, emissive: 0x660011 });
+    amulet.position.set(0, 0.78, 0.16);
+    group.add(amulet);
+
+    group.scale.setScalar(1.15);
+    return group;
+}
+
 // ==================== РЕГИСТРАЦИЯ МОДЕЛЕЙ ====================
 
 const MOB_MODELS = {
@@ -861,6 +942,7 @@ const MOB_MODELS = {
     ghost: createGhostModel,
     slime: createSlimeModel,
     bat: createBatModel,
+    vampire: createVampireModel,
     // Боссы
     forest_giant: createForestGiantModel,
     stone_golem: createStoneGolemModel,
