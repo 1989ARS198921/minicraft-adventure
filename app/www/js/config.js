@@ -69,13 +69,13 @@ export const COLORS = {
 };
 
 // Прозрачные блоки — рисуются отдельно, через них видно мир
-export const TRANSPARENT = new Set(['water', 'glass']);
+export const TRANSPARENT = new Set(['water', 'glass', 'crystal', 'cloud', 'portal', 'portalActive']);
 
 // Маленькие фигурки: не кубики, рисуем все их грани
-export const SMALL = new Set(['flower', 'mushroom', 'bush', 'stair', 'door', 'doorTop']);
+export const SMALL = new Set(['flower', 'mushroom', 'bush', 'stair', 'door', 'doorTop', 'glowshroom', 'rail']);
 
 // Сквозь эти блоки можно пройти (не стоишь на них, а проходишь)
-export const WALKTHROUGH = new Set(['water', 'flower', 'mushroom', 'bush', 'door', 'doorTop']);
+export const WALKTHROUGH = new Set(['water', 'flower', 'mushroom', 'bush', 'door', 'doorTop', 'cloud', 'glowshroom', 'portal', 'portalActive', 'rail']);
 
 // Что можно ставить из инвентаря (слоты 1-9 и 0)
 export const PLACEABLE = ['dirt', 'planks', 'stone', 'brick', 'sand', 'glass', 'leaf', 'stair', 'door', 'torch'];
