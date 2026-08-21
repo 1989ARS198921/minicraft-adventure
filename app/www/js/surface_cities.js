@@ -109,3 +109,53 @@ function stampFountain(data, x0, z0, c) {
       } else put(data, x0, z0, x, BASE + 1, z, 'water'); // чаша
     }
 }
+
+// ---- ДОМА ВНУТРИ ГОРОДА 🏠 ----
+// Маленькие домики 5×5 по периметру площади: стены, крыша, дверь.
+function stampHouse(data, x0, z0, c, hx, hz) {
+  for (let dx = 0; dx < 5; dx++)
+    for (let dz = 0; dz < 5; dz++) {
+      const x = hx + dx, z = hz + dz;
+      const edge = dx === 0 || dx === 4 || dz === 0 || dz === 4;
+      if (edge) {
+        // дверь с южной стороны по центру
+        const isDoor = dz === 4 && dx === 2;
+        for (let y = BASE + 1; y <= BASE + 3; y++) {
+          if (isDoor && y <= BASE + 2) cut(data, x0, z0, x, y, z);
+          else put(data, x0, z0, x, y, z, c.house);
+        }
+      }
+      // плоская крыша
+      put(data, x0, z0, x, BASE + 4, z, c.accent);
+    }
+}
+
+function stampHouses(data, x0, z0, c) {
+  // 8 домов: по три с запада и востока, по одному у северной стены
+  const spots = [
+    [-12, -10], [-12, 0], [-12, 10],
+    [8, -10], [8, 0], [8, 10],
+    [-6, -13], [2, -13],
+  ];
+  for (const [dx, dz] of spots) {
+    // в Древнем городе половина домов разрушена
+    if (c.ruins && ((dx * 3 + dz * 5) % 2 === 0)) continue;
+    stampHouse(data, x0, z0, c, c.cx + dx, c.cz + dz);
+  }
+}
+
+// ---- ГЛАВНАЯ ФУНКЦИЯ: ШТАМПУЕМ ВСЕ ГОРОДА В ЧАНКЕ ----
+// Вызывается из world.js при генерации каждого чанка.
+// cx, cz — координаты чанка (не блоков!).
+export function stampCities(data, cx, cz) {
+  const x0 = cx * 16, z0 = cz * 16;
+  for (const c of CITIES) {
+    // Чанк вообще пересекается с городом? Если нет — пропускаем
+    if (x0 + 15 < c.cx - R - 1 || x0 > c.cx + R + 1 ||
+        z0 + 15 < c.cz - R - 1 || z0 > c.cz + R + 1) continue;
+    stampGround(data, x0, z0, c);   // ровная площадка, дороги, площадь
+    stampWalls(data, x0, z0, c);    // стены, башни, ворота
+    stampFountain(data, x0, z0, c); // фонтан в центре
+    stampHouses(data, x0, z0, c);   // домики
+  }
+}
