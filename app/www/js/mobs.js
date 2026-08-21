@@ -758,7 +758,7 @@ function manageSpawns(dt) {
       ok = dist < R_NEAR;
     } else if (s.layer === 'cave') {
       // Пещеры/гроты живут от коренной скалы (-5) до поверхности
-      if (p.feet < 3 && dist < R_LAYER) { feet = scanFloor(s.x, s.z, 2, -4); ok = feet !== null; }
+      if (p.feet < 3 && dist < R_LAYER) { feet = scanFloor(s.x, s.z, 2, -30); ok = feet !== null; }
     } else if (s.layer === 'sky') {
       // Небесные города на платформах ~30-38, острова — выше
       if (p.feet > 25 && dist < R_LAYER) { feet = scanFloor(s.x, s.z, 100, 28); ok = feet !== null; }
