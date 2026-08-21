@@ -226,3 +226,93 @@ export function stepPlayer(G, dt) {
     }
   }
 }
+
+// ============================================================
+//  👁️ АДАПТАЦИЯ ИНТЕРФЕЙСА: кнопки и панели не загораживают вид
+//  (стили внедряются из этого модуля — index.html не трогаем)
+// ============================================================
+(function adaptTouchUI() {
+  const css = `
+/* Сенсорные кнопки полупрозрачные в покое, яркие при нажатии */
+body.touch .btn { opacity: .48; }
+body.touch .btn:active { opacity: 1; }
+body.touch #joyBase { opacity: .5; }
+/* Левая колонка кнопок компактнее */
+#btnCam  { bottom: 290px !important; }
+#btnPack { bottom: 356px !important; }
+#btnFire { bottom: 422px !important; }
+
+/* На сенсорных экранах скрываем ДУБЛИРУЮЩИЕ панели V50 —
+   те же действия уже есть на кнопках игры */
+body.touch #v50touch, body.touch #v50hot, body.touch #v50hud,
+body.touch #v50map { display: none !important; }
+
+/* Панель «Приключение» — сверху по центру, мелкая, полупрозрачная */
+#adv-v2 { right: auto !important; left: 50% !important; top: 6px !important;
+  transform: translateX(-50%) scale(.75); transform-origin: top center;
+  opacity: .7; z-index: 12 !important; }
+#adv-v2:hover { opacity: 1; }
+
+/* Квест V50 — под значками справа, не на миникарте */
+#v50quest { min-width: 0 !important; max-width: 148px !important;
+  font-size: 11px !important; padding: 6px !important;
+  top: 292px !important; right: 8px !important;
+  background: #101410b8 !important; }
+#v50map { min-width: 0 !important; max-width: 148px !important;
+  font-size: 10px !important; padding: 6px !important;
+  top: 384px !important; background: #101410b8 !important; }
+#v50hud .box { min-width: 150px !important; padding: 6px !important;
+  font-size: 11px !important; }
+#v50hud button { padding: 4px 6px !important; }
+
+/* Кнопки 📋 HUD / 📜 Квест — мелкие, над панелью заданий */
+#toggleHud, #toggleQuest { padding: 4px 8px !important; font-size: 11px !important; opacity: .7; }
+body.touch #toggleHud { top: 8px !important; left: 8px !important; }
+body.touch #toggleQuest { top: 8px !important; left: 92px !important; right: auto !important; }
+
+/* Панель заданий на телефоне — ниже кнопок, мельче */
+body.touch #quests { top: 42px !important; left: 8px !important;
+  max-width: 200px !important; font-size: 11px !important; }
+
+/* Сердечки и мана — по центру над хотбаром (как в Bedrock),
+   чтобы не перекрывать джойстик */
+body.touch #hearts { left: 50% !important; bottom: 56px !important;
+  transform: translateX(-50%); }
+body.touch #mana { left: 50% !important; bottom: 82px !important;
+  transform: translateX(-50%); }
+body.touch #fxBadge { left: 50% !important; bottom: 106px !important;
+  transform: translateX(-50%); }
+
+/* Заклинания повыше, чтобы не путаться с кнопками справа */
+body.touch #spells { bottom: 345px !important; }
+
+/* На узких экранах — ещё компактнее */
+@media (max-width: 560px) {
+  #v50quest { max-width: 120px !important; }
+  #adv-v2 { transform: translateX(-50%) scale(.65); }
+  body.touch .btn { opacity: .4; }
+}
+/* В альбомной ориентации телефона места совсем мало —
+   прячем доп.панель квеста V50 (основная панель 📋 остаётся) */
+@media (orientation: landscape) and (max-height: 520px) {
+  body.touch #v50quest { display: none !important; }
+}`;
+  const style = document.createElement('style');
+  style.id = 'touch-ui-adapt';
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  // На телефоне список заданий стартует свёрнутым — не закрывает обзор
+  const collapseQuests = () => {
+    const q = document.getElementById('quests');
+    if (q && document.body.classList.contains('touch')) q.classList.add('collapsed');
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', collapseQuests);
+  } else {
+    collapseQuests();
+  }
+  // Страховка: класс .touch добавляется отдельным скриптом и может
+  // появиться с задержкой — повторяем попытку
+  setTimeout(collapseQuests, 1500);
+})();
