@@ -3,7 +3,7 @@
 // ============================================================
 
 import * as THREE from 'three';
-import { groundHeight, solidAt, biomeAt, hillH } from './world.js';
+import { groundHeight, solidAt, biomeAt, hillH, blockAt } from './world.js';
 import { makeSkinTexture, skinnedPart, classicFigure } from './skins.js';
 import { bodyPart } from './playermodel.js';
 import { makeNameTag } from './npc.js';
@@ -589,7 +589,8 @@ function buildMobModel(kind, boss) {
 // Спавн монстра. Два варианта вызова:
 //   spawnMob(тип, x, z)                      — обычный монстр
 //   spawnMob(босс.id, босс.x, босс.z, hp, true, босс) — босс
-function spawnMob(type, x, z, hp, isBoss, bossData) {
+// layer: 'surface' | 'cave' | 'sky'; fixedFeet — фиксированная высота ног
+function spawnMob(type, x, z, hp, isBoss, bossData, layer, fixedFeet) {
     const boss = (isBoss && bossData) ? bossData : null;
     const src = boss || KINDS[type];
     if (!src) return null;
@@ -599,12 +600,13 @@ function spawnMob(type, x, z, hp, isBoss, bossData) {
 
     // Ставим монстра ногами на землю
     const gy = groundHeight(Math.floor(x), Math.floor(z));
-    const feet = gy > 0 ? gy : 5;
+    const feet = fixedFeet !== undefined ? fixedFeet : (gy > 0 ? gy : 5);
 
     const mob = {
         kind: kind,
         name: src.name || kind,
         x: x, z: z, feet: feet,
+        layer: layer || 'surface',
         hp: hp || src.hp, maxHp: hp || src.hp,
         dmg: src.dmg, reach: src.reach || 1.8, cool: src.cool || 1.2,
         aggro: src.aggro || 12, speed: src.speed || 2.2, speedCur: 0,
@@ -655,31 +657,129 @@ function canSpawnAt(x, z) {
 }
 
 // ============================================================
+//  🗺️ РАСПРЕДЕЛЁННЫЙ СПАВН ПО ВСЕЙ КАРТЕ
+//  Монстры «живут» как точки плана (PENDING), а модель создаётся
+//  только когда игрок подошёл близко — производительность не падает.
+// ============================================================
+
+const PENDING = [];           // план спавна: { kind, x, z, layer }
+const MAX_ACTIVE = 40;        // максимум одновременно активных монстров
+const R_NEAR = 65;            // ближе — материализуем
+const R_FAR = 95;             // дальше — возвращаем в план
+const R_LAYER = 45;           // радиус материализации в пещерах и небе
+
+// Разнообразие по биомам (и по заданиям: гоблин — в лесу, скелеты — в пустыне/горах)
+const BIOME_MOBS = {
+  forest:    ['wolf', 'spider', 'goblin', 'goblin', 'slime', 'bat'],
+  plains:    ['orc', 'zombie', 'goblin', 'wolf', 'orc'],
+  desert:    ['skeleton', 'skeleton', 'zombie', 'bat', 'spider'],
+  snow:      ['ghost', 'troll', 'skeleton', 'skeleton', 'wolf'],
+  mountains: ['troll', 'orc', 'skeleton', 'bat', 'skeleton']
+};
+const CAVE_MOBS = ['skeleton', 'zombie', 'spider', 'bat', 'slime', 'ghost'];
+const SKY_MOBS  = ['ghost', 'bat'];
+
+function planSpawns() {
+  // ---- ПОВЕРХНОСТЬ: ~450 точек по всей карте (±450) ----
+  let placed = 0, guard = 0;
+  while (placed < 450 && guard++ < 15000) {
+    const x = (Math.random() * 2 - 1) * 450;
+    const z = (Math.random() * 2 - 1) * 450;
+    if (!canSpawnAt(x, z)) continue;
+    const table = BIOME_MOBS[biomeAt(x, z)] || BIOME_MOBS.plains;
+    PENDING.push({ kind: table[placed % table.length], x, z, layer: 'surface' });
+    placed++;
+  }
+  // ---- КОЛЬЦО ВОКРУГ СТАРТА: новичок сразу встречает монстров ----
+  let ring = 0, guard2 = 0;
+  while (ring < 60 && guard2++ < 3000) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 25 + Math.random() * 45;
+    const x = Math.cos(angle) * dist, z = Math.sin(angle) * dist;
+    if (!canSpawnAt(x, z)) continue;
+    const table = BIOME_MOBS[biomeAt(x, z)] || BIOME_MOBS.plains;
+    PENDING.push({ kind: table[ring % table.length], x, z, layer: 'surface' });
+    ring++;
+  }
+  // ---- ПОДЗЕМЕЛЬЕ (пещеры, гроты, руины): появляются, когда игрок внизу ----
+  for (let i = 0; i < 160; i++) {
+    PENDING.push({ kind: CAVE_MOBS[i % CAVE_MOBS.length],
+      x: (Math.random() * 2 - 1) * 400, z: (Math.random() * 2 - 1) * 400, layer: 'cave' });
+  }
+  // ---- НЕБЕСА (облачные острова): появляются, когда игрок наверху ----
+  for (let i = 0; i < 70; i++) {
+    PENDING.push({ kind: SKY_MOBS[i % SKY_MOBS.length],
+      x: (Math.random() * 2 - 1) * 400, z: (Math.random() * 2 - 1) * 400, layer: 'sky' });
+  }
+  console.log(`🗺️ Запланировано ${PENDING.length} монстров по всей карте`);
+}
+
+// Ищем пол с двумя пустыми клетками сверху (для пещер и небесных островов)
+function scanFloor(x, z, yTop, yBottom) {
+  const bx = Math.floor(x), bz = Math.floor(z);
+  for (let y = yTop; y >= yBottom; y--) {
+    if (blockAt(bx, y, bz) && !blockAt(bx, y + 1, bz) && !blockAt(bx, y + 2, bz)) {
+      return y + 1;
+    }
+  }
+  return null;
+}
+
+// Менеджер близости: материализует ближних, убирает далёких
+let manageT = 0;
+function manageSpawns(dt) {
+  manageT -= dt;
+  if (manageT > 0) return;
+  manageT = 0.7;
+  const p = G.player;
+
+  // Убираем далёких и тех, чей слой игрок покинул
+  for (let i = MOBS.length - 1; i >= 0; i--) {
+    const m = MOBS[i];
+    if (m.isBoss || m.dead) continue;
+    const dist = Math.hypot(p.x - m.x, p.z - m.z);
+    const wrongLayer = (m.layer === 'cave' && p.feet > 4) ||
+                       (m.layer === 'sky' && p.feet < 20);
+    if (dist > R_FAR || wrongLayer || (m.layer !== 'surface' && dist > 60)) {
+      G.scene.remove(m.group);
+      m.hp = m.maxHp; m.angry = false; m.growled = false;
+      PENDING.push({ kind: m.kind, x: m.home.x, z: m.home.z, layer: m.layer });
+      MOBS.splice(i, 1);
+    }
+  }
+
+  // Материализуем ближних (не больше MAX_ACTIVE активных)
+  let active = MOBS.reduce((n, m) => n + (m.dead ? 0 : 1), 0);
+  for (let i = PENDING.length - 1; i >= 0 && active < MAX_ACTIVE; i--) {
+    const s = PENDING[i];
+    const dist = Math.hypot(p.x - s.x, p.z - s.z);
+    let ok = false, feet;
+    if (s.layer === 'surface') {
+      ok = dist < R_NEAR;
+    } else if (s.layer === 'cave') {
+      // Пещеры/гроты живут от коренной скалы (-5) до поверхности
+      if (p.feet < 3 && dist < R_LAYER) { feet = scanFloor(s.x, s.z, 2, -4); ok = feet !== null; }
+    } else if (s.layer === 'sky') {
+      // Небесные города на платформах ~30-38, острова — выше
+      if (p.feet > 25 && dist < R_LAYER) { feet = scanFloor(s.x, s.z, 100, 28); ok = feet !== null; }
+    }
+    if (ok) {
+      PENDING.splice(i, 1);
+      if (spawnMob(s.kind, s.x, s.z, undefined, false, null, s.layer, feet)) active++;
+    }
+  }
+}
+
+// ============================================================
 //  🚀 ИНИЦИАЛИЗАЦИЯ ВСЕХ МОНСТРОВ
 // ============================================================
 
 export function initMobs(gameContext) {
   G = gameContext;
-  
-  // ---- 100 ОБЫЧНЫХ МОНСТРОВ ----
-  const monsterTypes = ['goblin', 'spider', 'orc', 'skeleton', 'wolf', 'troll', 'ghost', 'slime', 'bat', 'zombie'];
-  let spawned = 0;
-  let attempts = 0;
-  
-  while (spawned < 100 && attempts < 5000) {
-    attempts++;
-    const type = monsterTypes[spawned % monsterTypes.length];
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 30 + Math.random() * 70;
-    const x = Math.cos(angle) * dist + (Math.random() - 0.5) * 20;
-    const z = Math.sin(angle) * dist + (Math.random() - 0.5) * 20;
-    
-    if (canSpawnAt(x, z)) {
-      spawnMob(type, x, z);
-      spawned++;
-    }
-  }
-  console.log(`👹 ${spawned} обычных монстров создано!`);
+
+  // ---- ПЛАН СПАВНА ПО ВСЕЙ КАРТЕ (3 слоя мира) ----
+  planSpawns();
+  manageSpawns(1); // сразу материализуем тех, кто рядом со стартом
 
   // ---- 10 БОССОВ (уникальные, разбросанные по карте) ----
   let bossSpawned = 0;
@@ -846,6 +946,7 @@ function mobCan(m, nx, nz) {
 
 export function updateMobs(dt) {
   updateArrows(dt);
+  manageSpawns(dt); // подгрузка/выгрузка монстров по близости
   const p = G.player;
   
   for (const m of MOBS) {
@@ -954,8 +1055,12 @@ export function updateMobs(dt) {
       }
     }
     
-    const gy = groundHeight(Math.floor(m.x), Math.floor(m.z));
-    if (gy > 0) m.feet += (gy - m.feet) * Math.min(1, dt * 10);
+    // Высота земли — только для наземных (пещерные и небесные
+    // стоят на своём полу, иначе их «вытянет» на поверхность)
+    if (!m.layer || m.layer === 'surface') {
+      const gy = groundHeight(Math.floor(m.x), Math.floor(m.z));
+      if (gy > 0) m.feet += (gy - m.feet) * Math.min(1, dt * 10);
+    }
     m.group.position.set(m.x, m.feet, m.z);
     
     if (walking) m.phase += dt * 9;
@@ -991,6 +1096,7 @@ export function mobGroups() {
   return MOBS.filter(m => !m.dead).map(m => m.group);
 }
 export function getMobs() { return MOBS; }
+export function getPending() { return PENDING; } // для отладки спавна
 export function orcSettlement() { return SETTLEMENTS[2]; }
 // ============================================================
 //  🆕 НОВЫЕ МОНСТРЫ ДЛЯ НЕБЕСНЫХ ГОРОДОВ
