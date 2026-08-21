@@ -573,10 +573,33 @@ function makeBossModel(bossData) {
 //  🎮 СОЗДАНИЕ МОНСТРОВ
 // ============================================================
 
+// Гуманоидные монстры получают СКИНЫ — как жители городов:
+// рисованное лицо, одежда, причёска + руки/ноги с суставами для анимации.
+const SKINNED_KINDS = {
+  orc:      { skin: '#6A9A4A', hair: '#1A1A1A', eye: '#C03030', shirt: '#5A4A38', pants: '#3A2E22', shoes: '#2A2018', style: 'orc' },
+  goblin:   { skin: '#7AB84A', hair: '#223311', eye: '#FFD030', shirt: '#4A3A28', pants: '#33301E', shoes: '#241F12', style: 'goblin' },
+  troll:    { skin: '#8FA08A', hair: '#4A4438', eye: '#FFCC33', shirt: '#6B6154', pants: '#4E463C', shoes: '#37312A', style: 'troll' },
+  zombie:   { skin: '#6A8A5A', hair: '#2E3A26', eye: '#88FF88', shirt: '#3E4A6B', pants: '#4A3E32', shoes: '#2A241C', style: 'zombie' },
+  skeleton: { skin: '#E8E0D0', hair: '#E8E0D0', eye: '#88FF88', shirt: '#D8D0C0', pants: '#C8C0B0', shoes: '#B0A898', style: 'skeleton' },
+  vampire:  { skin: '#E8DDD0', hair: '#0A0A0A', eye: '#FF1A1A', shirt: '#1A0A1A', pants: '#120812', shoes: '#0A050A', style: 'vampire' }
+};
+
 // Детальные модели живут в enhanced_mobs.js — глобальная фабрика
 // window.createMobModel (классический скрипт). Если она недоступна
 // (не загрузилась), используем простые пиксельные модели ниже.
 function buildMobModel(kind, boss) {
+    const so = SKINNED_KINDS[kind];
+    if (so) {
+        try {
+            const tex = makeSkinTexture(so);
+            const fig = classicFigure(tex);
+            const sc = (KINDS[kind] ? KINDS[kind].size : 1) * 0.85;
+            fig.group.scale.setScalar(sc);
+            return fig;
+        } catch (e) {
+            console.warn('[mobs] скин-модель не собралась для', kind, e);
+        }
+    }
     if (typeof window !== 'undefined' && typeof window.createMobModel === 'function') {
         try {
             const g = window.createMobModel(kind);
