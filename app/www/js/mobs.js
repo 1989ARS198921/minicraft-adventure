@@ -180,7 +180,7 @@ const BOSSES = [
     drop: 'diamondOre', dropN: 7,
     color: 0xFF6633, size: 2.2,
     desc: 'Пылающий огненный элементаль',
-    hitMsg: '🔥 Элементаль обжёг тебя!',
+    hitMsg: '🔥 Элементаль обжёк тебя!',
     x: 90, z: 70 // Юго-восток
   },
   // 7. ТЁМНЫЙ РЫЦАРЬ — чёрный, с мечом
@@ -571,6 +571,21 @@ function makeBossModel(bossData) {
 //  🎮 СОЗДАНИЕ МОНСТРОВ
 // ============================================================
 
+// Детальные модели живут в enhanced_mobs.js — глобальная фабрика
+// window.createMobModel (классический скрипт). Если она недоступна
+// (не загрузилась), используем простые пиксельные модели ниже.
+function buildMobModel(kind, boss) {
+    if (typeof window !== 'undefined' && typeof window.createMobModel === 'function') {
+        try {
+            const g = window.createMobModel(kind);
+            if (g) return { group: g };
+        } catch (e) {
+            console.warn('[mobs] createMobModel не сработал для', kind, e);
+        }
+    }
+    return boss ? makeBossModel(boss) : makePixelMob(kind);
+}
+
 // Спавн монстра. Два варианта вызова:
 //   spawnMob(тип, x, z)                      — обычный монстр
 //   spawnMob(босс.id, босс.x, босс.z, hp, true, босс) — босс
@@ -579,7 +594,7 @@ function spawnMob(type, x, z, hp, isBoss, bossData) {
     const src = boss || KINDS[type];
     if (!src) return null;
     const kind = boss ? boss.id : type;
-    const built = boss ? makeBossModel(boss) : makePixelMob(type);
+    const built = buildMobModel(kind, boss);
     if (!built || !built.group) return null;
 
     // Ставим монстра ногами на землю
@@ -954,7 +969,7 @@ export function updateMobs(dt) {
         m.armR.rotation.x = t < 0.4
           ? -0.4 - (t / 0.4) * 1.8
           : t < 0.62
-            ? -2.2 + ((t - 0.4) / 0.22) * 3.1
+            ? -2.2 + ((t - 0.62) / 0.22) * 3.1
             : 0.9 * (1 - (t - 0.62) / 0.38);
       } else m.armR.rotation.x = s;
     }
