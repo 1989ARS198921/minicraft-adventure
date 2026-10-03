@@ -32,6 +32,10 @@ export const TILES = {
   torch: [23, 23, 23], lava: [24, 24, 24], crystal: [25, 25, 25],
   glowstone: [26, 26, 26], obsidian: [27, 27, 27], cloud: [28, 28, 28],
   portal: [29, 29, 29], portalActive: [29, 29, 29], cloudStone: [28, 28, 28],
+  // 🧱 Строительные новинки (рисунки берём у доски/ступеньки/двери)
+  fence: [9, 9, 9], slab: [9, 9, 9],
+  stairN: [17, 17, 17], stairE: [17, 17, 17], stairW: [17, 17, 17],
+  doorOpen: [18, 18, 18], doorTopOpen: [18, 18, 18],
   skyGrass: [0, 1, 2], whiteWool: [5, 5, 5], stoneBricks: [10, 10, 10],
   chest: [9, 9, 9], rail: [9, 9, 9], goldBlock: [14, 14, 14],
   diamondBlock: [15, 15, 15], glowshroom: [21, 21, 21]
@@ -55,6 +59,14 @@ function makeAtlas() {
     }
   };
   const hline = (i, y, color, h = 2) => { g.fillStyle = color; g.fillRect(px(i), py(i) + y, T, h); };
+  // Мелкое зерно 2×2 — второй слой деталей поверх крупных пятен
+  const grain = (i, colors, n = 26) => {
+    for (let k = 0; k < n; k++) {
+      g.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+      g.fillRect(px(i) + Math.floor(Math.random() * 16) * 2,
+                 py(i) + Math.floor(Math.random() * 16) * 2, 2, 2);
+    }
+  };
   const vline = (i, x, color, w = 2) => { g.fillStyle = color; g.fillRect(px(i) + x, py(i), w, T); };
   // Тёмная рамка по краю плитки — кубики читаются отдельно (совсем тонкая)
   const frame = i => {
@@ -64,19 +76,29 @@ function makeAtlas() {
 
   // 0 — верх травы: сочная зелень
   base(0, '#4FCB24'); dots(0, ['#43B81F', '#5DDA2E', '#3AA818'], 22);
+  grain(0, ['#66E438', '#3AA818', '#8FE84C', '#2E9414'], 34); // травинки
   // 1 — бок травы: земля с зелёной «чёлкой» сверху
   base(1, '#8B5A2B'); dots(1, ['#7A4A22', '#9C6A33'], 14);
   g.fillStyle = '#4FCB24'; g.fillRect(px(1), py(1), T, 7);
   g.fillStyle = '#43B81F';
   for (let k = 0; k < 8; k++) g.fillRect(px(1) + k * 4, py(1) + 7, 4, k % 2 ? 2 : 4);
-  // 2 — земля
+  // 2 — земля: комья и камешки
   base(2, '#8B5A2B'); dots(2, ['#7A4A22', '#9C6A33', '#6E4019'], 18);
-  // 3 — камень
+  grain(2, ['#A8763B', '#5E3612'], 24);
+  grain(2, ['#9A9A9A', '#7E7E7E'], 6); // камешки в земле
+  // 3 — камень: крап + трещины
   base(3, '#9A9A9A'); dots(3, ['#8A8A8A', '#ABABAB', '#7E7E7E'], 18);
-  // 4 — песок
+  grain(3, ['#B8B8B8', '#6E6E6E'], 28);
+  g.fillStyle = '#6E6E6E'; // трещинки-уголки
+  g.fillRect(px(3) + 6, py(3) + 4, 2, 10); g.fillRect(px(3) + 6, py(3) + 12, 8, 2);
+  g.fillRect(px(3) + 20, py(3) + 18, 2, 10); g.fillRect(px(3) + 14, py(3) + 18, 8, 2);
+  // 4 — песок: рябь дюн
   base(4, '#E8D78A'); dots(4, ['#DBC877', '#F2E39B'], 16);
-  // 5 — снег
+  grain(4, ['#F7ECC0', '#C9B566'], 26);
+  hline(4, 8, '#DBC877', 1); hline(4, 20, '#F2E39B', 1);
+  // 5 — снег: искры и синие тени
   base(5, '#F4F8FF'); dots(5, ['#E2ECF8', '#FFFFFF'], 12);
+  grain(5, ['#FFFFFF', '#C8DCF0'], 22);
   // 6 — ствол сбоку: вертикальные полосы коры
   base(6, '#B5651D');
   for (let k = 0; k < 5; k++) vline(6, k * 7 + 1, '#9A4F14', 3);
@@ -86,12 +108,16 @@ function makeAtlas() {
   g.strokeStyle = '#9A6A34'; g.lineWidth = 2;
   g.strokeRect(px(7) + 5, py(7) + 5, 22, 22);
   g.strokeRect(px(7) + 11, py(7) + 11, 10, 10);
-  // 8 — листва: густая зелень
+  // 8 — листва: густая зелень с просветами
   base(8, '#2E8B22'); dots(8, ['#257A1B', '#3AA32C', '#1E6B15'], 26);
-  // 9 — доски: горизонтальные планки
+  grain(8, ['#46B836', '#145A0E'], 30);
+  // 9 — доски: планки + гвоздики
   base(9, '#C89B5A');
   for (let k = 0; k < 4; k++) hline(9, k * 8, '#A87E42', 2);
   dots(9, ['#B98D4E'], 8);
+  grain(9, ['#D8AC6A', '#8A6A36'], 20);
+  g.fillStyle = '#5E4A26'; // гвозди по краям планок
+  for (let k = 0; k < 4; k++) { g.fillRect(px(9) + 2, py(9) + k * 8 + 3, 2, 2); g.fillRect(px(9) + 28, py(9) + k * 8 + 3, 2, 2); }
   // 10 — кирпич: кладка со швами
   base(10, '#B7422F');
   g.fillStyle = '#D8C9B8';
@@ -117,7 +143,9 @@ function makeAtlas() {
   // 13-15 — руды: камень + цветные вкрапления
   const ore = (i, c1, c2) => {
     base(i, '#9A9A9A'); dots(i, ['#8A8A8A', '#7E7E7E'], 10);
+    grain(i, ['#B8B8B8', '#6E6E6E'], 20);
     dots(i, [c1, c2], 9, 4);
+    grain(i, ['#FFFFFF'], 5); // блики на самоцветах
   };
   ore(13, '#2B2B2B', '#404040');   // уголь
   ore(14, '#FFD75E', '#E8B73C');   // золото
@@ -159,10 +187,13 @@ function makeAtlas() {
   base(24, '#E25822'); dots(24, ['#FFD75E', '#B7381E', '#FF9A3C'], 20);
   // 25 — кристалл: ледяной бирюзовый с блёстками
   base(25, '#9BE8F0'); dots(25, ['#FFFFFF', '#5CC8E0', '#D8FAFF'], 18);
-  // 26 — светокамень: тёплый светящийся
+  grain(25, ['#FFFFFF', '#3EA8C8'], 20);
+  // 26 — светокамень: тёплый светящийся с раскалённой сердцевиной
   base(26, '#FFD75E'); dots(26, ['#FFF3B0', '#E8B73C', '#FFFFFF'], 18);
-  // 27 — обсидиан: почти чёрный с фиолетовым
+  grain(26, ['#FFFFFF', '#FFF9C4'], 24);
+  // 27 — обсидиан: почти чёрный с фиолетовыми искрами
   base(27, '#1A1025'); dots(27, ['#2E1B45', '#0D0817', '#3D2660'], 14);
+  grain(27, ['#5B3A8C', '#8A5CD0'], 12);
   // 28 — облако / облачный камень: белоснежный
   base(28, '#F4F8FF'); dots(28, ['#E2ECF8', '#FFFFFF', '#D0E0F0'], 16);
   // 29 — портал: фиолетовая воронка
@@ -204,9 +235,19 @@ export const chunkMatWater = new THREE.MeshLambertMaterial({
   emissive: 0x0A1A33 // ночью озёра чуть светятся — видно, куда нырять!
 });
 
+// Лава и портал — своя копия текстуры: она медленно течёт,
+// и лава «дышит» жаром (сама чуть светится — emissive) 🌋
+export const lavaTex = new THREE.CanvasTexture(chunkMat.map.image);
+lavaTex.magFilter = THREE.NearestFilter;
+export const chunkMatLava = new THREE.MeshLambertMaterial({
+  map: lavaTex,
+  vertexColors: true,
+  emissive: 0xA03808, emissiveIntensity: 0.55
+});
+
 // Чёткие квадратики вместо мыльного размытия вдали:
 // без мипмапов плитки атласа не «протекают» друг в друга
-for (const t of [chunkMat.map, waterTex]) {
+for (const t of [chunkMat.map, waterTex, lavaTex]) {
   t.minFilter = THREE.NearestFilter;
   t.generateMipmaps = false;
   t.needsUpdate = true;
