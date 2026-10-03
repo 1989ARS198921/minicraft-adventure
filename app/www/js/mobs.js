@@ -2,6 +2,7 @@
 //  👹 МОНСТРЫ И БОССЫ — 100+ монстров, 10 уникальных боссов
 // ============================================================
 
+import { addBlobShadow } from './shadows.js';
 import * as THREE from 'three';
 import { groundHeight, solidAt, biomeAt, hillH, blockAt } from './world.js';
 import { makeSkinTexture, skinnedPart, classicFigure } from './skins.js';
@@ -15,7 +16,11 @@ import { emit } from './bus.js';
 import { ORC_HOMES, inAnyVillage, SETTLEMENTS } from './village.js';
 import { weaponDamage, armorValue } from './equip.js';
 import { skillRank } from './skills.js';
+import { giveArtifact, hasArtifact, BOSS_ARTIFACTS } from './artifacts.js';
+import { QUEST_SITES } from './quest_locations.js';
 import { DUNGEON } from './dungeon.js';
+import { scatterCamps } from './scatter.js';
+import { lairSpawns } from './lairs.js';
 
 let G = null;
 const MOBS = [];
@@ -620,11 +625,14 @@ function spawnMob(type, x, z, hp, isBoss, bossData, layer, fixedFeet) {
     const src = boss || KINDS[type];
     if (!src) return null;
     const kind = boss ? boss.id : type;
+    // 🗺️ Кольца сложности: дальше от центра карты — монстры крепче и злее!
+    // Кольцо 1 (0–150): обычные • Кольцо 2 (150–300): ×1.5 • Кольцо 3 (300+): ×2.2
+    const ringMul = boss ? 1 : (Math.hypot(x, z) < 150 ? 1 : Math.hypot(x, z) < 300 ? 1.5 : 2.2);
     const built = buildMobModel(kind, boss);
     if (!built || !built.group) return null;
 
     // Ставим монстра ногами на землю
-    const gy = groundHeight(Math.floor(x), Math.floor(z));
+    const gy = groundHeight(Math.floor(x), Math.floor(z), 60);
     const feet = fixedFeet !== undefined ? fixedFeet : (gy > 0 ? gy : 5);
 
     const mob = {
@@ -632,8 +640,9 @@ function spawnMob(type, x, z, hp, isBoss, bossData, layer, fixedFeet) {
         name: src.name || kind,
         x: x, z: z, feet: feet,
         layer: layer || 'surface',
-        hp: hp || src.hp, maxHp: hp || src.hp,
-        dmg: src.dmg, reach: src.reach || 1.8, cool: src.cool || 1.2,
+        hp: Math.round((hp || src.hp) * ringMul), maxHp: Math.round((hp || src.hp) * ringMul),
+        dmg: Math.round(src.dmg * ringMul), reach: src.reach || 1.8, cool: src.cool || 1.2,
+        xpMul: ringMul, // опыт за крепкого монстра — больше!
         aggro: src.aggro || 12, speed: src.speed || 2.2, speedCur: 0,
         drop: src.drop || 'goldOre', dropN: src.dropN || 1,
         hitMsg: src.hitMsg || '👹 Монстр ударил!',
@@ -647,6 +656,7 @@ function spawnMob(type, x, z, hp, isBoss, bossData, layer, fixedFeet) {
     };
 
     built.group.position.set(x, feet, z);
+    addBlobShadow(built.group, 0.5 * (src.size || 1)); // 🌑 тень под ногами
     if (G && G.scene) G.scene.add(built.group);
     createHPBar(mob);
     // Луч атаки (actions.js) узнаёт монстра по userData.mob —
@@ -702,18 +712,44 @@ const BIOME_MOBS = {
   mountains: ['troll', 'orc', 'skeleton', 'bat', 'vampire', 'skeleton']
 };
 const CAVE_MOBS = ['skeleton', 'zombie', 'spider', 'bat', 'slime', 'ghost', 'vampire'];
-const SKY_MOBS  = ['ghost', 'bat'];
+const SKY_MOBS  = ['ghost', 'bat', 'ghost', 'bat', 'skeleton', 'slime'];
 
 function planSpawns() {
-  // ---- ПОВЕРХНОСТЬ: ~450 точек по всей карте (±450) ----
-  let placed = 0, guard = 0;
-  while (placed < 450 && guard++ < 15000) {
-    const x = (Math.random() * 2 - 1) * 450;
-    const z = (Math.random() * 2 - 1) * 450;
-    if (!canSpawnAt(x, z)) continue;
-    const table = BIOME_MOBS[biomeAt(x, z)] || BIOME_MOBS.plains;
-    PENDING.push({ kind: table[placed % table.length], x, z, layer: 'surface' });
-    placed++;
+  // ---- ПОВЕРХНОСТЬ: равномерная СЕТКА по всей карте (±450) ----
+  // Один монстр на клетку ~42 блока + небольшой случайный сдвиг:
+  // нет ни пустых пустынь, ни скоплений — монстры везде понемногу.
+  const STEP = 42;
+  for (let gx = -450; gx <= 450; gx += STEP) {
+    for (let gz = -450; gz <= 450; gz += STEP) {
+      const x = gx + (Math.random() * 2 - 1) * 14;
+      const z = gz + (Math.random() * 2 - 1) * 14;
+      if (!canSpawnAt(x, z)) continue;
+      const table = BIOME_MOBS[biomeAt(x, z)] || BIOME_MOBS.plains;
+      PENDING.push({ kind: table[Math.floor(Math.random() * table.length)], x, z, layer: 'surface' });
+    }
+  }
+  // ---- 🏰 СТРАЖА ХОГВАРТСА: призраки у башен, пауки в лесу к западу ----
+  // (задания Гарри выполняются прямо у замка!)
+  const HG = [
+    [250, 212, 'ghost'], [236, 228, 'ghost'], [264, 228, 'ghost'], [250, 248, 'ghost'],
+    [228, 230, 'spider'], [220, 240, 'spider'], [226, 218, 'spider'], [234, 250, 'spider'], [212, 244, 'spider'],
+  ];
+  for (const [x, z, kind] of HG) PENDING.push({ kind, x, z, layer: 'surface' });
+  // ---- ⚔️ ЛОГОВА: по 4 стража у каждого (кольцо краёв карты) ----
+  for (const s of lairSpawns()) PENDING.push(s);
+  // ---- 💀🧹 Сказочные стражи: скелеты Кащея, волки Яги ----
+  const FT = [
+    [-358, 296, 'skeleton'], [-342, 296, 'skeleton'], [-358, 308, 'skeleton'], [-342, 308, 'skeleton'],
+    [-350, 288, 'ghost'], [-350, 312, 'ghost'],
+    [344, -254, 'wolf'], [356, -254, 'wolf'], [350, -268, 'wolf'],
+  ];
+  for (const [x, z, kind] of FT) PENDING.push({ kind, x, z, layer: 'surface' });
+  // ---- 🏕️ ЛАГЕРЯ МОНСТРОВ «Живого мира»: группы у находок ----
+  const CAMP_MOBS = { orccamp: 'orc', spidernest: 'spider', wolfden: 'wolf' };
+  for (const c of scatterCamps()) {
+    const kind = CAMP_MOBS[c.kind] || 'orc';
+    for (let i = 0; i < 3; i++)
+      PENDING.push({ kind, x: c.x + (Math.random() * 2 - 1) * 4, z: c.z + (Math.random() * 2 - 1) * 4, layer: 'surface' });
   }
   // ---- КОЛЬЦО ВОКРУГ СТАРТА: новичок сразу встречает монстров ----
   let ring = 0, guard2 = 0;
@@ -735,6 +771,17 @@ function planSpawns() {
   for (let i = 0; i < 70; i++) {
     PENDING.push({ kind: SKY_MOBS[i % SKY_MOBS.length],
       x: (Math.random() * 2 - 1) * 400, z: (Math.random() * 2 - 1) * 400, layer: 'sky' });
+  }
+  // ---- КВЕСТОВЫЕ ЛОКАЦИИ: монстры живут именно там, куда посылают задания ----
+  for (const site of QUEST_SITES) {
+    for (const [kind, n] of site.mobs) {
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        PENDING.push({ kind, layer: 'surface',
+          x: site.x + Math.cos(a) * (3 + (i % 3) * 3),
+          z: site.z + Math.sin(a) * (3 + (i % 3) * 3) });
+      }
+    }
   }
   console.log(`🗺️ Запланировано ${PENDING.length} монстров по всей карте`);
 }
@@ -806,9 +853,9 @@ export function initMobs(gameContext) {
   planSpawns();
   manageSpawns(1); // сразу материализуем тех, кто рядом со стартом
 
-  // ---- 10 БОССОВ (уникальные, разбросанные по карте) ----
+  // ---- 10 БОССОВ: ⏸️ ВРЕМЕННО ОТКЛЮЧЕНЫ (крупных монстров убрали, вернём позже) ----
   let bossSpawned = 0;
-  for (const boss of BOSSES) {
+  for (const boss of (false ? BOSSES : [])) {
     // Проверяем, что босс не в запретной зоне
     let canSpawn = true;
     for (const zone of FORBIDDEN_ZONES) {
@@ -855,6 +902,8 @@ export function initMobs(gameContext) {
 
 export function attackMob(m, dmg = weaponDamage(G)) {
   if (!m || m.dead) return;
+  emit('mobhit', m.kind); // прокачка навыка «Меч»
+  if (hasArtifact(G, 'artiSunIdol')) dmg += 1; // ☀️ Идол солнца
   m.hp -= dmg;
   m.flashT = 0.18;
   m.angry = true;
@@ -882,6 +931,12 @@ function killMob(m) {
   }
   
   G.inv[m.drop] = (G.inv[m.drop] || 0) + m.dropN;
+  // ✨ Артефакт с босса!
+  if (m.isBoss && BOSS_ARTIFACTS[m.kind]) giveArtifact(G, BOSS_ARTIFACTS[m.kind]);
+  // 👑 Корона короля гоблинов: +2 очка навыков
+  if (m.kind === 'goblin_king') { G.sp = (G.sp || 0) + 2; showToast('👑 Корона короля! +2 очка навыков'); }
+  // 🦷 Вампиры иногда роняют клык (артефакт)
+  if (m.kind === 'vampire' && Math.random() < 0.15) giveArtifact(G, 'artiVampFang');
   updateInvUI();
   
   const msg = m.isBoss
@@ -892,7 +947,7 @@ function killMob(m) {
   
   emit('mobkill', m.kind);
   if (m.isBoss) emit('bosskill', m.kind);
-  emit('xp', m.isBoss ? 100 : 3);
+  emit('xp', Math.round((m.isBoss ? 100 : 3) * (m.xpMul || 1)));
 }
 
 // ============================================================
@@ -1007,7 +1062,7 @@ export function updateMobs(dt) {
       m.hitT = undefined;
       const dd = Math.hypot(p.x - m.x, p.z - m.z);
       if (dd < m.reach * 1.3 && Math.abs(p.feet - m.feet) < 3 && G.hp > 0) {
-        damage(Math.max(1, m.dmg - armorValue(G)), m.hitMsg);
+        damage(Math.max(1, m.dmg - armorValue(G) - skillRank(G, 'defense')), m.hitMsg);
         spawnParticles(p.x, p.feet + 1.2, p.z, 'coalOre');
       }
     }
@@ -1027,7 +1082,8 @@ export function updateMobs(dt) {
     const dx = p.x - m.x, dz = p.z - m.z;
     const dist = Math.hypot(dx, dz);
     const farFromHome = Math.hypot(m.x - m.home.x, m.z - m.home.z) > 35;
-    const seesPlayer = (dist < m.aggro || m.angry) &&
+    const aggroR = hasArtifact(G, 'artiShadowCloak') ? m.aggro * 0.5 : m.aggro; // 🌫️ Плащ теней
+    const seesPlayer = (dist < aggroR || m.angry) &&
       Math.abs(p.feet - m.feet) < 3.5 && G.hp > 0;
     
     let walking = false;
@@ -1083,7 +1139,7 @@ export function updateMobs(dt) {
     // Высота земли — только для наземных (пещерные и небесные
     // стоят на своём полу, иначе их «вытянет» на поверхность)
     if (!m.layer || m.layer === 'surface') {
-      const gy = groundHeight(Math.floor(m.x), Math.floor(m.z));
+      const gy = groundHeight(Math.floor(m.x), Math.floor(m.z), m.feet + 2.5);
       if (gy > 0) m.feet += (gy - m.feet) * Math.min(1, dt * 10);
     }
     m.group.position.set(m.x, m.feet, m.z);
