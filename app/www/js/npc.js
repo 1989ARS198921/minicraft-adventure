@@ -5,6 +5,7 @@
 //  дам 3 кирпича!». Это наши первые RPG-задания от персонажей.
 // ============================================================
 
+import { addBlobShadow } from './shadows.js';
 import * as THREE from 'three';
 import { groundHeight, blockAt, solidAt } from './world.js';
 import { bodyPart } from './playermodel.js';
@@ -225,7 +226,28 @@ const DEFS = [
     hi: 'Лучшие товары у орков! Покупай, не пожалеешь!' }
 ];
 
-// ---- ДОМА ДЛЯ НОВЫХ NPC (с правильной высотой) ----
+// ---- ☁️ НЕБЕСНЫЕ ЖИТЕЛИ (только в облачном городе, на земле их нет!) ----
+const SKY_DEFS = [
+  { name: 'Аэлон', role: 'wizard', style: 'wizard', trains: 'learning', sky: true,
+    outfit: { skin: '#E8F0FF', hair: '#FFFFFF', eye: '#3A7BD5',
+              shirt: '#8EC8E8', pants: '#5A8AB8', shoes: '#E8E8F0' },
+    hi: 'Добро пожаловать в облачный город! Слушай задание: добудь 5 хрусталей на парящих островах — Айра даст за них алмаз!' },
+  { name: 'Айра', role: 'trade', style: 'elf', sky: true,
+    want: 'crystal', wantN: 5, give: 'diamondOre', giveN: 1,
+    outfit: { skin: '#FFE8D0', hair: '#B8E8FF', eye: '#7A5AE0',
+              shirt: '#A8D8F0', pants: '#6888C8', shoes: '#E8E8F0' },
+    hi: 'Хрустали с парящих островов — моя страсть! Принеси 5 хрусталей — дам алмаз!' },
+  { name: 'Ветрогон', role: 'trainer', style: 'long', trains: 'bow', sky: true,
+    outfit: { skin: '#F1C27D', hair: '#E8F4FF', eye: '#27AE60',
+              shirt: '#7BAE9F', pants: '#3A5A78', shoes: '#C8D8E8' },
+    hi: 'Стрельба в небе особая — ветер сносит стрелу! Приноси очки навыков, научу. А ещё испытай себя: победи 10 призраков неба!' }
+];
+const SKY_HOMES = [
+  { x: 6, z: 8, sky: true },   // облачный город: платформа с центром в (8,8)
+  { x: 10, z: 8, sky: true },
+  { x: 8, z: 5, sky: true }
+];
+
 // ---- ДОМА ДЛЯ НОВЫХ NPC (с правильной высотой) ----
 const NEW_HOMES = [
   // Лесная деревня
@@ -337,7 +359,32 @@ const CITY_DEFS = [
   { name: 'Тренер Бур', role: 'trainer', style: 'dwarf', city: 'under', trains: 'sword',
     outfit: { skin: '#E8B88A', hair: '#CC6633', eye: '#3A3A4A',
               shirt: '#5A4A3A', pants: '#3A3228', shoes: '#2A1F14' },
-    hi: 'В тесных штольнях размахнуться негде — учись бить коротко и точно!' }
+    hi: 'В тесных штольнях размахнуться негде — учись бить коротко и точно!' },
+
+  // 🏰 ХОГВАРТС — школа магии
+  { name: 'Гарри Поттер', role: 'mayor', style: 'glasses', city: 'hogwarts',
+    outfit: { skin: '#F1C27D', hair: '#1A1A1A', eye: '#2A5A2A',
+              shirt: '#5A1A1A', pants: '#2A2A2A', shoes: '#2A2A2A' },
+    hi: 'Привет! Я Гарри. В Запретном лесу развелись пауки, а в башнях — призраки... Поможешь школе?' },
+  { name: 'Гермиона Грейнджер', role: 'wizard', style: 'long', city: 'hogwarts', trains: 'learning',
+    outfit: { skin: '#F1C9A0', hair: '#6A4A2A', eye: '#5A3A1A',
+              shirt: '#5A1A1A', pants: '#3A3A4A', shoes: '#2A1F14' },
+    shopTitle: '📚 Гермиона — зелья и книги',
+    hi: 'Я Гермиона! Зельеварение и заклинания — моё всё. Могу и тебя научить, если не ленишься.' },
+  { name: 'Рон Уизли', role: 'merchant', style: 'cap', city: 'hogwarts',
+    outfit: { skin: '#FFD7B0', hair: '#C94A1A', eye: '#3A5A7A',
+              shirt: '#5A1A1A', pants: '#4A4A4A', shoes: '#3A2A1A' },
+    shopTitle: '🍬 Рон — сладости и припасы',
+    hi: 'О, привет! Я Рон. Хочешь чего-нибудь вкусного? У меня ещё со стола лёгкого осталось!' },
+  // 💀🧹 СКАЗОЧНЫЕ — дальние края карты
+  { name: 'Кащей Бессмертный', role: 'mayor', style: 'wizard', city: 'kaschey',
+    outfit: { skin: '#D8D8C8', hair: '#2A2A2A', eye: '#8AFF5A',
+              shirt: '#1A1025', pants: '#0A0A12', shoes: '#1A1A1A' },
+    hi: 'Кто посмел войти в мой замок?.. А, герой. Служи мне — и бессмертие... впрочем, ладно, просто награжу.' },
+  { name: 'Баба Яга', role: 'mayor', style: 'bun', city: 'yaga',
+    outfit: { skin: '#D8C8A8', hair: '#9A9A9A', eye: '#3A5A2A',
+              shirt: '#4A5A2A', pants: '#5A4A3A', shoes: '#2A1F14' },
+    hi: 'Ишь, кого нелёгкая принесла! Поможешь старухе по хозяйству — не обижу, угостишься отваром!' },
 ];
 
 // Домики горожан: мэр у южной дороги площади,
@@ -348,7 +395,11 @@ const CITY_HOMES = [
   { x: -120, z: -125, y: 4.5 }, { x: -125, z: -130, y: 4.5 }, { x: -115, z: -130, y: 4.5 },
   { x: 150, z: -75, y: 4.5 }, { x: 145, z: -80, y: 4.5 }, { x: 155, z: -80, y: 4.5 },
   { x: -80, z: 155, y: 4.5 }, { x: -85, z: 150, y: 4.5 }, { x: -75, z: 150, y: 4.5 },
-  { x: 0, z: -115, y: 4.5 }, { x: -5, z: -120, y: 4.5 }, { x: 5, z: -120, y: 4.5 }
+  { x: 0, z: -115, y: 4.5 }, { x: -5, z: -120, y: 4.5 }, { x: 5, z: -120, y: 4.5 },
+  // 🏰 Хогвартс: Гарри у ворот, Гермиона у Большого зала, Рон у фонарей
+  { x: 250, z: 238, y: 4.5 }, { x: 246, z: 228, y: 4.5 }, { x: 254, z: 232, y: 4.5 },
+  // 💀 Кащей у трона, 🧹 Яга у избушки
+  { x: -350, z: 296, y: 4.5 }, { x: 352, z: -255, y: 4.5 }
 ];
 
 // ============================================================
@@ -405,7 +456,24 @@ function makeVillager(def) {
   g.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.01), eyeBlinkMat)).position.set(0.18, 1.82, 0.27);
   
   if (style === 'bun') g.add(bodyPart(0.2, 0.18, 0.2, hairColor, 0, 2.05, 0));
-  if (style === 'long') g.add(bodyPart(0.48, 0.5, 0.12, hairColor, 0, 1.8, 0.2));
+  if (style === 'long') {
+    g.add(bodyPart(0.48, 0.5, 0.12, hairColor, 0, 1.8, 0.2));
+    // 💇 длинные волосы до пояса + пряди по бокам (Гермиона!)
+    g.add(bodyPart(0.5, 0.9, 0.14, hairColor, 0, 1.45, 0.22));
+    g.add(bodyPart(0.09, 0.55, 0.1, hairColor, -0.26, 1.6, 0.12));
+    g.add(bodyPart(0.09, 0.55, 0.1, hairColor, 0.26, 1.6, 0.12));
+  }
+  if (style === 'glasses') {
+    // 👓 круглые очки Гарри: стёкла, дужки-перемычка
+    g.add(bodyPart(0.15, 0.13, 0.03, 0x1A1A1A, -0.15, 1.82, 0.28));
+    g.add(bodyPart(0.15, 0.13, 0.03, 0x1A1A1A, 0.15, 1.82, 0.28));
+    g.add(bodyPart(0.1, 0.03, 0.03, 0x1A1A1A, 0, 1.84, 0.28));
+    // ⚡ шрам-молния на лбу!
+    g.add(bodyPart(0.05, 0.1, 0.02, 0xB03030, 0.08, 1.97, 0.27));
+    // растрёпанные тёмные вихры
+    g.add(bodyPart(0.5, 0.14, 0.5, hairColor, 0, 2.02, 0));
+    g.add(bodyPart(0.2, 0.1, 0.2, hairColor, -0.1, 2.1, 0.05));
+  }
   
   // ====== ШЛЯПЫ И ПРИЧЁСКИ ======
   if (style === 'wizard') {
@@ -515,7 +583,9 @@ export function initNPCs(gameContext) {
     home = home || { x: 0, z: 0, y: 4.5 };
     const npc = {
       ...def, ...parts,
-      x: home.x, z: home.z, feet: home.y || 4.5,
+      x: home.x, z: home.z,
+      // ☁️ Небесные жители стоят на платформе облачного города (ищем её до самого верха)
+      feet: home.sky ? groundHeight(home.x, home.z, 130) : (home.y || 4.5),
       home,
       tx: home.x, tz: home.z,
       wait: Math.random() * 4,
@@ -523,6 +593,7 @@ export function initNPCs(gameContext) {
       speed: 1.7 + Math.random() * 0.7,
       speedCur: 0
     };
+    addBlobShadow(npc.group, 0.45); // 🌑 тень под ногами
     npc.group.traverse(o => o.userData.npc = npc);
     npc.group.position.set(npc.x, npc.feet, npc.z);
     G.scene.add(npc.group);
@@ -535,6 +606,8 @@ export function initNPCs(gameContext) {
   };
 
   DEFS.forEach((def, i) => spawnNPC(def, HOMES[i]));
+  // ☁️ Небесные жители облачного города
+  SKY_DEFS.forEach((def, i) => spawnNPC(def, SKY_HOMES[i]));
   // 🏙️ Горожане: мэры, торговцы и тренеры пяти больших городов
   CITY_DEFS.forEach((def, i) => {
     spawnNPC(def, CITY_HOMES[i]);
@@ -611,9 +684,15 @@ export function updateNPCs(dt) {
       n.wait = 2 + Math.random() * 5;
       const nx = n.home.x + Math.random() * 10 - 5;
       const nz = n.home.z + Math.random() * 10 - 5;
-      const gy = groundHeight(Math.floor(nx), Math.floor(nz));
-      if (gy <= 5 && blockAt(Math.floor(nx), gy - 1, Math.floor(nz)) !== 'water') {
-        n.tx = nx; n.tz = nz;
+      if (n.sky) {
+        // ☁️ Небесный житель гуляет по платформе: не ниже неё на 2 блока
+        const gy = groundHeight(Math.floor(nx), Math.floor(nz), n.feet + 1.2);
+        if (gy > n.feet - 3) { n.tx = nx; n.tz = nz; }
+      } else {
+        const gy = groundHeight(Math.floor(nx), Math.floor(nz));
+        if (gy <= 5 && blockAt(Math.floor(nx), gy - 1, Math.floor(nz)) !== 'water') {
+          n.tx = nx; n.tz = nz;
+        }
       }
     }
     if (n.head) {
@@ -640,6 +719,37 @@ export function updateNPCs(dt) {
 
 const dlg = () => document.getElementById('dlg');
 
+// Болтовня: случайные реплики для кнопки «💬 Поболтать»
+const CHAT = {
+  villager: ['Румяные яблоки нынче уродились! 🍎', 'Говорят, в шахте под холмом водятся призраки... 👻', 'Видел дракона над горами? Красавчик! 🐉', 'Костёр ночью — лучшее лекарство 🔥'],
+  merchant: ['Товары свежие, сам выбирал! 🧺', 'Заглядывай чаще — для тебя всегда скидка... почти 😄', 'Ходят слухи: небесные города платят кристаллами 💎'],
+  wizard: ['Магия — это наука точных пропорций 🧪', 'Не трогай фиолетовое зелье. Лучше не надо. 💜', 'Светящийся камень усиливает зелья втрое!'],
+  mayor: ['Город процветает благодаря таким, как ты! 🏘️', 'Поручений много, а героев мало 🏆', 'Стены крепки, жители довольны — что ещё надо?'],
+  trainer: ['Тренировки каждый день — вот секрет силы! 💪', 'Навык приходит с практикой, а не с мечтаниями 📚'],
+};
+
+// Универсальное окно диалога: имя, текст, кнопки-варианты ответов
+function showDialog(name, text, opts) {
+  document.getElementById('dlgName').textContent = name;
+  document.getElementById('dlgText').textContent = text;
+  const box = document.getElementById('dlgOpts');
+  box.innerHTML = '';
+  for (const o of opts) {
+    const b = document.createElement('button');
+    b.className = 'dlgOpt';
+    if (o.setup) o.setup(b);
+    else { b.textContent = o.label; b.onclick = o.onClick; b.disabled = !!o.disabled; }
+    box.appendChild(b);
+  }
+  dlg().style.display = 'flex';
+}
+
+const chatOpt = role => ({ label: '💬 Поболтать', onClick: () => {
+  const lines = CHAT[role] || CHAT.villager;
+  document.getElementById('dlgText').textContent = lines[Math.floor(Math.random() * lines.length)];
+}});
+const byeOpt = () => ({ label: '👋 До встречи', onClick: () => { dlg().style.display = 'none'; } });
+
 function setupTrainButton(btn, npc) {
   const id = npc.trains;
   const sk = SKILLS[id];
@@ -662,107 +772,59 @@ function setupTrainButton(btn, npc) {
 function openTrainDialog(npc) {
   const sk = SKILLS[npc.trains];
   const rank = skillRank(G, npc.trains);
-  const dlgEl = dlg();
-  
-  document.getElementById('dlgName').textContent = `${sk.icon} ${npc.name} — тренер`;
-  document.getElementById('dlgText').textContent =
-    `${npc.hi} Сейчас ты — ${RANKS[rank]}. «${sk.name}»: ${sk.desc}`;
-  document.getElementById('dlgSecond').style.display = 'none';
-  
-  const btn = document.getElementById('dlgTrade');
-  btn.disabled = false;
-  btn.style.pointerEvents = 'auto';
-  btn.style.cursor = 'pointer';
-  setupTrainButton(btn, npc);
-  
-  dlgEl.style.display = 'flex';
-  
-  clearTimeout(window._dialogTimeout);
-  window._dialogTimeout = setTimeout(() => {
-    if (dlgEl.style.display === 'flex') dlgEl.style.display = 'none';
-  }, 5000);
+  showDialog(`${sk.icon} ${npc.name} — тренер`,
+    `${npc.hi} Сейчас ты — ${RANKS[rank]}. «${sk.name}»: ${sk.desc}`,
+    [{ setup: b => setupTrainButton(b, npc) }, chatOpt('trainer'), byeOpt()]);
 }
 
 function openWizardDialog(npc) {
-  document.getElementById('dlgName').textContent = `🧙 ${npc.name}`;
-  document.getElementById('dlgText').textContent = npc.hi;
-  const btn = document.getElementById('dlgTrade');
-  btn.disabled = false;
-  btn.textContent = '🧪 К полке зелий';
-  btn.onclick = () => { dlg().style.display = 'none'; openShop('🧙 Зелья Мерлина', WIZARD_ITEMS); };
-  const btn2 = document.getElementById('dlgSecond');
-  btn2.style.display = '';
-  setupTrainButton(btn2, npc);
-  dlg().style.display = 'flex';
-  
-  clearTimeout(window._dialogTimeout);
-  window._dialogTimeout = setTimeout(() => {
-    if (dlg().style.display === 'flex') dlg().style.display = 'none';
-  }, 5000);
+  showDialog(`🧙 ${npc.name}`, npc.hi, [
+    { label: '🧪 К полке зелий', onClick: () => { dlg().style.display = 'none'; openShop(npc.shopTitle || '🧙 Зелья Мерлина', WIZARD_ITEMS); } },
+    { setup: b => setupTrainButton(b, npc) },
+    chatOpt('wizard'), byeOpt()]);
 }
 
 // 👑 Диалог мэра: показывает следующий шаг цепочки заданий города
 function openMayorDialog(npc) {
-  // Все задания этой цепочки по порядку (steel1..steel5 и т.д.)
   const chain = QUESTS.filter(q => q.city === npc.city);
-  // Первое невыполненное задание, которое уже открылось
   const next = chain.find(q => !questState[q.id].done && (!q.after || questState[q.after].done));
-  document.getElementById('dlgName').textContent = `👑 ${npc.name} — глава города`;
-  document.getElementById('dlgText').textContent = next
-    ? `${npc.hi} Текущее поручение: «${next.text}»`
-    : `${npc.hi} Все поручения выполнены — ты герой нашего города! 🏆`;
-  const btn = document.getElementById('dlgTrade');
-  btn.disabled = false;
-  btn.style.pointerEvents = 'auto';
-  btn.style.cursor = 'pointer';
-  btn.textContent = '📜 Я готов помочь городу!';
-  btn.onclick = () => {
-    emit('cityTalk', npc.city); // квесты-разговоры слушают это событие
-    sfx.quest();
-    dlg().style.display = 'none';
-  };
-  document.getElementById('dlgSecond').style.display = 'none';
-  dlg().style.display = 'flex';
+  showDialog(`👑 ${npc.name} — глава города`,
+    next ? `${npc.hi} Текущее поручение: «${next.text}»` : `${npc.hi} Все поручения выполнены — ты герой нашего города! 🏆`,
+    [{ label: '📜 Я готов помочь городу!', onClick: () => { emit('cityTalk', npc.city); sfx.quest(); dlg().style.display = 'none'; } },
+     chatOpt('mayor'), byeOpt()]);
+}
 
-  clearTimeout(window._dialogTimeout);
-  window._dialogTimeout = setTimeout(() => {
-    if (dlg().style.display === 'flex') dlg().style.display = 'none';
-  }, 5000);
+// 🏪 Диалог торговца: приветствие → варианты
+function openMerchantDialog(npc) {
+  showDialog(`🏪 ${npc.name} — торговец`, npc.hi || 'Добро пожаловать в мою лавку!', [
+    { label: '🤝 Торговать', onClick: () => { dlg().style.display = 'none'; openShop(npc.shopTitle || '🏪 Лавка Тихона', npc.items || SHOP_ITEMS); } },
+    chatOpt('merchant'), byeOpt()]);
 }
 
 export function interactNPC(npc) {
   if (npc.role === 'mayor') { openMayorDialog(npc); return; }
-  if (npc.role === 'merchant') { openShop(npc.shopTitle || '🏪 Лавка Тихона', npc.items || SHOP_ITEMS); return; }
+  if (npc.role === 'merchant') { openMerchantDialog(npc); return; }
   if (npc.role === 'wizard' && npc.trains) { openWizardDialog(npc); return; }
-  if (npc.role === 'wizard') { openShop('🧙 Зелья Мерлина', WIZARD_ITEMS); return; }
+  if (npc.role === 'wizard') { openShop(npc.shopTitle || '🧙 Зелья Мерлина', WIZARD_ITEMS); return; }
   if (npc.role === 'trainer') { openTrainDialog(npc); return; }
 
-  document.getElementById('dlgSecond').style.display = 'none';
-  document.getElementById('dlgName').textContent = `🧍 ${npc.name}`;
   const have = G.inv[npc.want] || 0;
   const canTrade = have >= npc.wantN;
-  document.getElementById('dlgText').textContent = canTrade
+  showDialog(`🧍 ${npc.name}`, canTrade
     ? `${npc.hi} У тебя есть ${NAMES[npc.want].toLowerCase()} — хватает на обмен!`
-    : `${npc.hi} (Нужно: ${npc.wantN} × ${NAMES[npc.want].toLowerCase()}, у тебя: ${have})`;
-  const btn = document.getElementById('dlgTrade');
-  btn.textContent = canTrade
-    ? `🤝 Отдать ${npc.wantN} → получить ${npc.giveN} (${NAMES[npc.give].toLowerCase()})`
-    : `Нужно ещё ${npc.wantN - have}`;
-  btn.disabled = !canTrade;
-  btn.onclick = () => {
-    G.inv[npc.want] -= npc.wantN;
-    G.inv[npc.give] = (G.inv[npc.give] || 0) + npc.giveN;
-    updateInvUI();
-    sfx.quest();
-    showToast(`🤝 ${npc.name}: Спасибо, держи!`);
-    emit('xp', 2);
-    emit('dirty');
-    dlg().style.display = 'none';
-  };
-  dlg().style.display = 'flex';
-  
-  clearTimeout(window._dialogTimeout);
-  window._dialogTimeout = setTimeout(() => {
-    if (dlg().style.display === 'flex') dlg().style.display = 'none';
-  }, 5000);
+    : `${npc.hi} (Нужно: ${npc.wantN} × ${NAMES[npc.want].toLowerCase()}, у тебя: ${have})`,
+    [{ setup: b => {
+        b.textContent = canTrade
+          ? `🤝 Отдать ${npc.wantN} → получить ${npc.giveN} (${NAMES[npc.give].toLowerCase()})`
+          : `Нужно ещё ${npc.wantN - have}`;
+        b.disabled = !canTrade;
+        b.onclick = () => {
+          G.inv[npc.want] -= npc.wantN;
+          G.inv[npc.give] = (G.inv[npc.give] || 0) + npc.giveN;
+          updateInvUI(); sfx.quest();
+          showToast(`🤝 ${npc.name}: Спасибо, держи!`);
+          emit('xp', 2); emit('dirty');
+          dlg().style.display = 'none';
+        };
+      } }, chatOpt('villager'), byeOpt()]);
 }
