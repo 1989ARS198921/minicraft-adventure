@@ -2,15 +2,20 @@
 //  🖼️ ИНТЕРФЕЙС: всплывающие сообщения и инвентарь
 // ============================================================
 
-import { PLACEABLE, COLORS } from './config.js';
+import { PLACEABLE, EXTRA_PLACEABLE, COLORS } from './config.js';
 import { EQUIPPABLE, equipItem, isEquipped, gear } from './equip.js';
 
 // Подписи и трофеи для рюкзака (и для диалогов с жителями!)
 export const NAMES = {
+  fence: 'Забор', slab: 'Плита', stoneBricks: 'Каменные кирпичи',
+  glowstone: 'Светокамень', obsidian: 'Обсидиан', whiteWool: 'Шерсть',
+  snow: 'Снег', cactus: 'Кактус', bush: 'Куст',
+
   dirt: 'Земля', planks: 'Доски', stone: 'Камень', brick: 'Кирпич', sand: 'Песок',
   glass: 'Стекло', leaf: 'Листва', stair: 'Ступенька', door: 'Дверь', torch: 'Факел',
   coalOre: 'Уголь', goldOre: 'Золото', diamondOre: 'Алмазы',
   apple: 'Яблоко', firewood: 'Дрова', matches: 'Спички',
+  seal: 'Печать силы', bed: 'Кровать', chest: 'Сундук',
   flower: 'Цветок', mushroom: 'Гриб',
   potionHealth: 'Зелье здоровья', potionSpeed: 'Зелье скорости', potionJump: 'Зелье прыжков',
   sword: 'Меч',
@@ -20,19 +25,39 @@ export const NAMES = {
   bow: 'Лук', arrows: 'Стрелы',
   armorLeather: 'Кожаная броня', armorChain: 'Кольчуга',
   // 🔮 Этап 3: свитки заклинаний (выученные живут в кнопках 🔮 справа)
-  spellFire: 'Свиток огненного шара', spellHeal: 'Свиток лечения'
+  spellFire: 'Свиток огненного шара', spellHeal: 'Свиток лечения',
+  crystal: 'Хрусталь',
+  // ✨ Артефакты (пассивные чудеса, работают из рюкзака)
+  artiVampFang: 'Клык вампира', artiSunIdol: 'Идол солнца',
+  artiDragonHeart: 'Сердце дракона', artiWindBoots: 'Сапоги ветра',
+  artiLifeRing: 'Кольцо жизни', artiShadowCloak: 'Плащ теней',
+  artiGolemCore: 'Ядро голема', artiPhoenix: 'Перо феникса',
+  artiFrostShard: 'Осколок мерзлоты', artiSeaPearl: 'Жемчужина глубин',
+  artiCloudFeather: 'Облачное перо'
 };
 const TROPHIES = ['coalOre', 'goldOre', 'diamondOre']; // добытые руды — гордость!
 // Всякое в рюкзаке: еда, припасы для костра, ингредиенты, зелья и снаряжение
 const GOODIES = ['apple', 'firewood', 'matches', 'flower', 'mushroom',
+                 'seal', 'bed',
                  'potionHealth', 'potionSpeed', 'potionJump', 'sword',
                  'swordWood', 'swordStone', 'swordGold', 'swordDiamond',
-                 'bow', 'arrows', 'armorLeather', 'armorChain'];
-const ICONS = { // у предметов вместо цвета — весёлый значок
+                 'bow', 'arrows', 'armorLeather', 'armorChain',
+                 'crystal',
+                 // ✨ Артефакты
+                 'artiVampFang', 'artiSunIdol', 'artiDragonHeart', 'artiWindBoots',
+                 'artiLifeRing', 'artiShadowCloak', 'artiGolemCore', 'artiPhoenix',
+                 'artiFrostShard', 'artiSeaPearl', 'artiCloudFeather'];
+export const ICONS = { // у предметов вместо цвета — весёлый значок
   apple: '🍎', firewood: '🪵', matches: '🔥', flower: '🌸', mushroom: '🍄',
+  seal: '🔮', bed: '🛏️', chest: '📦',
   potionHealth: '🧪', potionSpeed: '⚡', potionJump: '🦘', sword: '🗡️',
   swordWood: '🗡️', swordStone: '🗡️', swordGold: '⚔️', swordDiamond: '⚔️',
-  bow: '🏹', arrows: '➶', armorLeather: '🦺', armorChain: '🛡️'
+  bow: '🏹', arrows: '➶', armorLeather: '🦺', armorChain: '🛡️',
+  crystal: '💠',
+  artiVampFang: '🦷', artiSunIdol: '☀️', artiDragonHeart: '💗',
+  artiWindBoots: '👢', artiLifeRing: '💍', artiShadowCloak: '🌫️',
+  artiGolemCore: '🗿', artiPhoenix: '🪶', artiFrostShard: '❄️',
+  artiSeaPearl: '🫧', artiCloudFeather: '🎐'
 };
 
 let G = null;
@@ -63,6 +88,8 @@ export function updateInvUI() {
   for (let s = 0; s < PLACEABLE.length; s++) {
     const el = document.getElementById('slot' + s);
     const cnt = G.inv[PLACEABLE[s]];
+    // пересобираем подпись: номер + имя блока + количество
+    el.innerHTML = `<span class="num">${(s + 1) % 10}</span>${NAMES[PLACEABLE[s]] || PLACEABLE[s]}<span class="cnt"></span>`;
     el.querySelector('.cnt').textContent = cnt === Infinity ? '∞' : cnt;
     el.classList.toggle('empty', cnt !== Infinity && cnt <= 0);
   }
@@ -78,7 +105,7 @@ export function initHotbar() {
 // ---------- 🎒 РЮКЗАК ----------
 const bp = () => document.getElementById('backpack');
 // Что можно «употребить» прямо из рюкзака тапом
-const USABLE = new Set(['apple', 'potionHealth', 'potionSpeed', 'potionJump']);
+const USABLE = new Set(['apple', 'potionHealth', 'potionSpeed', 'potionJump', 'bed']);
 let onUseItem = null; // функцию пришлёт shop.js/health.js через init
 export function setUseItemHandler(fn) { onUseItem = fn; }
 
@@ -109,7 +136,10 @@ function goodieCell(type) {
 // Перерисовать содержимое рюкзака
 export function renderBackpack() {
   document.getElementById('bpGrid').innerHTML =
-    PLACEABLE.map((t, i) => bpCell(t, G.inv[t], i)).join('');
+    PLACEABLE.map((t, i) => bpCell(t, G.inv[t], i)).join('') +
+    '<div style="width:100%;opacity:.8;font-size:13px;margin:6px 0 2px">🧱 Ещё блоки — тап кладёт в выбранный слот:</div>' +
+    EXTRA_PLACEABLE.filter(t => !PLACEABLE.includes(t))
+      .map(t => bpCell(t, G.inv[t]).replace('data-slot=""', `data-swap="${t}"`)).join('');
   document.getElementById('bpGoodies').innerHTML =
     GOODIES.map(goodieCell).join('');
   document.getElementById('bpTrophies').innerHTML =
@@ -139,6 +169,11 @@ export function initBackpack() {
       renderBackpack();
     } else if (item && item.dataset.use) { // употребляемый предмет
       if (onUseItem) onUseItem(item.dataset.use);
+    } else if (item && item.dataset.swap) { // 🧱 доп. блок — в выбранный слот!
+      PLACEABLE[G.slot] = item.dataset.swap;
+      updateInvUI();
+      renderBackpack();
+      showToast(`🧱 Слот ${G.slot + 1}: теперь «${NAMES[item.dataset.swap]}»`);
     } else if (item && item.dataset.slot) { // выбрали блок — в руку!
       selectSlot(+item.dataset.slot);
       toggleBackpack();
