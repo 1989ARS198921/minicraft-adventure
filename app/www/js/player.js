@@ -9,6 +9,7 @@ import { sfx } from './audio.js';
 import { showToast } from './ui.js';
 import { groundHeight, blockAt, solidAt } from './world.js';
 import { spawnParticles } from './particles.js';
+import { hasArtifact } from './artifacts.js';
 
 // Создать игрока на старте мира
 export function createPlayer() {
@@ -97,7 +98,8 @@ export function stepPlayer(G, dt) {
   // --- Ходьба туда, куда повёрнута голова (в полёте — быстрее!) ---
   const sprintMul = (!p.fly && p.sprint && !p.crouch) ? 1.65 : 1;
   const crouchMul = (!p.fly && p.crouch) ? 0.48 : 1;
-  const speed = p.fly ? CONFIG.FLY_SPEED : CONFIG.SPEED * (G.fx.speed > 0 ? 1.6 : 1) * sprintMul * crouchMul;
+  const windMul = (!p.fly && hasArtifact(G, 'artiWindBoots')) ? 1.35 : 1; // 👢 Сапоги ветра
+  const speed = p.fly ? CONFIG.FLY_SPEED : CONFIG.SPEED * (G.fx.speed > 0 ? 1.6 : 1) * sprintMul * crouchMul * windMul;
   const mx = (-Math.sin(p.yaw) * iz + Math.cos(p.yaw) * ix) * speed * dt;
   const mz = (-Math.cos(p.yaw) * iz - Math.sin(p.yaw) * ix) * speed * dt;
 
@@ -201,7 +203,7 @@ export function stepPlayer(G, dt) {
 
     // Прыжок
     if (keys['Space'] && p.onGround) {
-      p.vy = CONFIG.JUMP * (G.fx.jump > 0 ? 1.35 : 1);
+      p.vy = CONFIG.JUMP * (G.fx.jump > 0 ? 1.35 : 1) * (hasArtifact(G, 'artiCloudFeather') ? 1.25 : 1);
       p.onGround = false;
       emit('jump');
       sfx.jump();
