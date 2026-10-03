@@ -71,7 +71,7 @@ export function tryMakeFire() {
   const p = G.player;
   const fx = Math.floor(p.x - Math.sin(p.yaw) * 1.6);
   const fz = Math.floor(p.z - Math.cos(p.yaw) * 1.6);
-  addFire(fx, groundHeight(fx, fz), fz);
+  addFire(fx, groundHeight(fx, fz, 40), fz);
   // Тратим припасы: дрова сгорают в костре, спичка — чирк!
   G.inv.firewood -= 2;
   G.inv.matches -= 1;

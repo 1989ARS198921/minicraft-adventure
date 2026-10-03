@@ -1,11 +1,12 @@
 // ============================================================
 // 🎮 УПРАВЛЕНИЕ: клавиатура + мышь на ПК, Bedrock-style touch на телефоне
 // ============================================================
-import { doBreak, doPlace } from './actions.js';
+import { doBreak, doPlace, doTapAt } from './actions.js';
 import { toggleFly } from './player.js';
 import { toggleCamera } from './playermodel.js';
 import { selectSlot, showToast, toggleBackpack } from './ui.js';
 import { tryMakeFire } from './campfire.js';
+import { openBigMap } from './minimap.js';
 
 let G = null;
 const overlay = () => document.getElementById('overlay');
@@ -19,33 +20,63 @@ export function initInput(gameContext) {
 
 function initKeyboard() {
   let lastSpaceTime = 0;
+  // Стрелки = WASD (запасной вариант)
+  const ALIAS = { ArrowUp: 'KeyW', ArrowDown: 'KeyS', ArrowLeft: 'KeyA', ArrowRight: 'KeyD' };
+  // Игровые клавиши не отдаём браузеру (скролл/фокс/меню)
+  const GAME_KEYS = new Set(['Space', 'Tab', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyF', 'KeyM', 'KeyC', 'ShiftLeft', 'ShiftRight', ...Object.keys(ALIAS)]);
+
   document.addEventListener('keydown', e => {
+    if (GAME_KEYS.has(e.code)) e.preventDefault();
     if (e.code === 'Space') {
-      e.preventDefault();
       if (!e.repeat) {
         const now = performance.now();
         if (now - lastSpaceTime < 280) toggleFly(G);
         lastSpaceTime = now;
       }
     }
-    if (e.code === 'F5') { e.preventDefault(); showToast(toggleCamera(G) ? '🎥 Вид из-за спины' : '👁️ Вид от первого лица'); }
-    if (e.code === 'KeyE') toggleBackpack();
-    if (e.code === 'KeyF') tryMakeFire();
+    if (e.code === 'F5' || e.code === 'KeyC') { e.preventDefault(); if (!e.repeat) showToast(toggleCamera(G) ? '🎥 Вид из-за спины' : '👁️ Вид от первого лица'); }
+    if (e.code === 'KeyE' && !e.repeat) toggleBackpack();
+    if (e.code === 'KeyF' && !e.repeat) tryMakeFire();
+    if (e.code === 'KeyM' && !e.repeat) openBigMap();
     G.keys[e.code] = true;
+    if (ALIAS[e.code]) G.keys[ALIAS[e.code]] = true;
     if (e.code.startsWith('Digit')) {
       const n = +e.code.slice(5);
       selectSlot(n === 0 ? 9 : n - 1);
     }
-  });
-  document.addEventListener('keyup', e => G.keys[e.code] = false);
+  }, true);
+  document.addEventListener('keyup', e => {
+    G.keys[e.code] = false;
+    if (ALIAS[e.code]) G.keys[ALIAS[e.code]] = false;
+  }, true);
+  // Антизалипание: потеря фокуса/выход из pointer lock — отпускаем все клавиши
+  const clearKeys = () => { for (const k in G.keys) G.keys[k] = false; };
+  window.addEventListener('blur', clearKeys);
+  document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) clearKeys(); });
 }
 
 function initMouse() {
-  overlay().addEventListener('click', () => {
+  // Главное меню: старт только по кнопке ▶️
+  const btnPlay = document.getElementById('btnPlay');
+  try { if (localStorage.getItem('minicraft_save')) btnPlay.textContent = '▶️ Продолжить'; } catch (e) {}
+  btnPlay.addEventListener('click', e => {
+    e.stopPropagation();
+    btnPlay.blur(); // фокус убрать: Пробел не должен «кликать» кнопку
     if (G.IS_TOUCH) overlay().style.display = 'none'; else document.body.requestPointerLock();
   });
+  document.getElementById('btnHelp').addEventListener('click', e => {
+    e.stopPropagation();
+    const mh = document.getElementById('menuHelp');
+    mh.style.display = mh.style.display === 'none' ? 'block' : 'none';
+  });
   document.addEventListener('pointerlockchange', () => {
-    if (!G.IS_TOUCH) overlay().style.display = document.pointerLockElement ? 'none' : 'flex';
+    if (G.IS_TOUCH) return;
+    // Если открыто окно (диалог/лавка/склад/порталы) — меню не показываем
+    const modal = ['dlg', 'shop', 'storage', 'portals', 'backpack'].some(id => {
+      const el = document.getElementById(id);
+      return el && (el.style.display === 'flex' || el.style.display === 'block');
+    });
+    overlay().style.display = (document.pointerLockElement || modal) ? 'none' : 'flex';
   });
   document.addEventListener('mousemove', e => {
     if (!document.pointerLockElement) return;
@@ -84,7 +115,7 @@ function initTouch() {
   let hotbarTouchId = null, hotbarStartX = 0, hotbarLastX = 0;
 
   function onUI(el) {
-    return el.closest && el.closest('.btn, #hotbar, #quests, #overlay, #backpack, #dlg, #shop, #hearts, #minimap, #timeBadge, #lvlBadge, #flyBadge');
+    return el.closest && el.closest('.btn, #hotbar, #quests, #overlay, #backpack, #dlg, #shop, #hearts, #minimap, #bigMap, #timeBadge, #lvlBadge, #flyBadge');
   }
   function setTouchAction() { document.body.style.touchAction = 'none'; }
   setTouchAction();
@@ -124,8 +155,8 @@ function initTouch() {
         joyCenter = { x: innerWidth * 0.16, y: innerHeight * 0.78 };
         moveJoy(t); handled = true; continue;
       }
-      // Правая половина — отдельная зона обзора
-      if (lookTouchId === null && lookZone && lookZone.contains(t.target) || (lookTouchId === null && t.clientX >= innerWidth * 0.48)) {
+      // Всё, что не UI и не джойстик — тачпад обзора (весь экран!)
+      if (lookTouchId === null) {
         lookTouchId = t.identifier;
         lastLX = lookStartX = t.clientX; lastLY = lookStartY = t.clientY;
         lookStartT = performance.now(); lookMoved = false;
@@ -166,7 +197,10 @@ function initTouch() {
         const dt = performance.now() - lookStartT;
         const moved = Math.hypot(t.clientX-lookStartX, t.clientY-lookStartY);
         if (dt < 260 && moved < 12 && overlay().style.display === 'none') {
-          if (tapMode === 'break') doBreak(); else doPlace();
+          // 👆 Сначала — тап точно по персонажу (житель/монстр/зверь), иначе — обычное действие
+          if (!doTapAt(t.clientX, t.clientY)) {
+            if (tapMode === 'break') doBreak(); else doPlace();
+          }
         }
         lookTouchId = null;
       }
