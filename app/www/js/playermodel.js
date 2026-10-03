@@ -5,6 +5,7 @@
 //  вид: от первого лица ↔ камера летит за спиной.
 // ============================================================
 
+import { addBlobShadow } from './shadows.js';
 import * as THREE from 'three';
 import { CONFIG, WALKTHROUGH, COLORS, PLACEABLE } from './config.js';
 import { blockAt } from './world.js';
@@ -33,6 +34,11 @@ export function bodyPart(w, h, d, color, x, y, z, pivotY) {
   return mesh;
 }
 
+let shadowBlob = null;
+let armorG = null, lastArmor = undefined; // 🛡️ броня на герое
+let hairTuft = null;                       // 💇 объёмные волосы
+let backBow = null;                        // 🏹 лук за спиной
+
 export function initPlayerModel(gameContext) {
   G = gameContext;
   model = new THREE.Group();
@@ -49,8 +55,63 @@ export function initPlayerModel(gameContext) {
   legL = fig.legL; legR = fig.legR; armL = fig.armL; armR = fig.armR;
   model.add(fig.group);
 
+  // 💇 Объёмные волосы — шапочка чуть шире головы, герой живее
+  const hairMat = new THREE.MeshLambertMaterial({ color: 0x5B3A1A });
+  hairTuft = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.14, 0.54), hairMat);
+  hairTuft.position.y = 2.02;
+  const hairBack = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.34, 0.1), hairMat);
+  hairBack.position.set(0, 1.84, 0.26);
+  model.add(hairTuft, hairBack);
+
+  // 🛡️ БРОНЯ НА ГЕРОЕ: шлем, кираса, наплечники, ботинки.
+  // Видна, когда броня надета; цвет зависит от типа!
+  armorG = new THREE.Group();
+  const aMat = () => new THREE.MeshLambertMaterial({ color: 0x8B5A2B });
+  const helm = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.42, 0.58), aMat());
+  helm.position.y = 1.8;
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.06), aMat());
+  visor.position.set(0, 1.72, -0.3); // прорезь для глаз спереди
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.72, 0.36), aMat());
+  chest.position.y = 1.12;
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.38),
+    new THREE.MeshLambertMaterial({ color: 0x4A3520 }));
+  belt.position.y = 0.78;
+  armorG.add(helm, visor, chest, belt);
+  armorG.userData.mats = [helm.material, visor.material, chest.material];
+  // Наплечники качаются вместе с руками
+  for (const arm of [armL, armR]) {
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.34), aMat());
+    pad.position.y = -0.02;
+    armorG.userData.mats.push(pad.material);
+    arm.add(pad);
+    armorG.userData['pad_' + (arm === armL ? 'L' : 'R')] = pad;
+  }
+  // Ботинки шагают вместе с ногами
+  for (const leg of [legL, legR]) {
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.36), aMat());
+    boot.position.set(0, -0.62, -0.02);
+    armorG.userData.mats.push(boot.material);
+    leg.add(boot);
+    armorG.userData['boot_' + (leg === legL ? 'L' : 'R')] = boot;
+  }
+  armorG.visible = false; // появится, когда наденем броню!
+  model.add(armorG);
+
+  // 🏹 Лук за спиной: виден, когда в руках меч (по-настоящему, по-геройски!)
+  backBow = makeBow();
+  backBow.position.set(0, 1.15, 0.3);
+  backBow.rotation.z = 0.35;
+  backBow.visible = false;
+  model.add(backBow);
+
   model.visible = false; // от первого лица себя не видно!
   G.scene.add(model);
+
+  // 🌑 Тень-пятно под героем: отдельно от модели,
+  // чтобы было видно даже от первого лица
+  shadowBlob = new THREE.Group();
+  addBlobShadow(shadowBlob, 0.5);
+  G.scene.add(shadowBlob);
 
   // 🖐 Предмет в руке (вид от третьего лица): кубик в правой руке
   heldMat3rd = new THREE.MeshLambertMaterial({ color: 0x8B5A2B });
@@ -143,6 +204,7 @@ export function updatePlayerModel(dt) {
 
   // Фигурка стоит там, где игрок, и смотрит туда же
   model.position.set(p.x, p.feet, p.z);
+  if (shadowBlob) shadowBlob.position.set(p.x, p.feet, p.z);
   model.rotation.y = p.yaw;
   model.visible = !!G.cam3rd;
 
@@ -187,6 +249,19 @@ export function updatePlayerModel(dt) {
     for (const s of [sword1st, sword3rd])
       for (const mt of s.userData.bladeMats) mt.color.setHex(SWORD_COLOR[w] || 0xD8E8F0);
   }
+  // 🛡️ Броня на герое: надел — видно! Кожа коричневая, кольчуга серебрится
+  const armor = gear(G).armor;
+  if (armor !== lastArmor) {
+    lastArmor = armor;
+    armorG.visible = !!armor;
+    const col = armor === 'armorChain' ? 0xAAB2BA : 0x8B5A2B;
+    for (const m of armorG.userData.mats) m.color.setHex(col);
+    // наплечники и ботинки висят на конечностях — прячем вместе с бронёй
+    for (const k of ['pad_L', 'pad_R', 'boot_L', 'boot_R'])
+      if (armorG.userData[k]) armorG.userData[k].visible = !!armor;
+  }
+  if (backBow) backBow.visible = isSword && G.cam3rd; // меч в руке — лук за спиной
+
   // Надетое оружие видно всегда, а кубик блока — только с пустыми руками
   sword3rd.visible = isSword && G.cam3rd;
   sword1st.visible = isSword && !G.cam3rd;
