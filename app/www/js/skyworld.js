@@ -35,6 +35,10 @@ function generateSkyWorld(data, cx, cz) {
                         setBlock(data, worldX, top + 3, worldZ, 'crystal');
                 }
 
+                // Сундук с сокровищем (редко, на ровной вершине)
+                if (_nhash(worldX, 95, worldZ) < 0.012)
+                    setBlock(data, worldX, top + 2, worldZ, 'chest');
+
                 // Золотые купола (редкие)
                 if (detailNoise > 0.75 && _nhash(worldX, 93, worldZ) < 0.02)
                     generateGoldenDome(data, worldX, top + 2, worldZ);

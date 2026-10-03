@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { emit } from './bus.js';
-import { chunkMatWater, waterTex } from './textures.js';
+import { chunkMatWater, waterTex, lavaTex } from './textures.js';
 
 let G = null;
 let stars, starMat, sun, ambient;
@@ -172,6 +172,7 @@ export function updateDayNight(dt) {
   // а прозрачность дышит, как рябь на озере
   const wt = performance.now() / 1000;
   waterTex.offset.set(Math.sin(wt * 0.5) * 0.02, Math.cos(wt * 0.35) * 0.02);
+  lavaTex.offset.set(Math.sin(wt * 0.3) * 0.015, wt * 0.008); // лава медленно течёт 🌋
   chunkMatWater.opacity = 0.58 + Math.sin(wt * 1.2) * 0.04;
 
   if (dl < 0.08) emit('night'); // квест «Дождись ночи»
