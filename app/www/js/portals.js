@@ -9,6 +9,17 @@
 import * as THREE from 'three';
 import { on, emit } from './bus.js';
 import { hillH, groundHeight } from './world.js';
+
+// Кладём/убираем блок, только если он внутри ЭТОГО чанка
+const key = (x, y, z) => x + ',' + y + ',' + z;
+function put(data, x0, z0, x, y, z, t) {
+  if (x < x0 || x > x0 + 15 || z < z0 || z > z0 + 15) return;
+  data.set(key(x, y, z), t);
+}
+function del(data, x0, z0, x, y, z) {
+  if (x < x0 || x > x0 + 15 || z < z0 || z > z0 + 15) return;
+  data.delete(key(x, y, z));
+}
 import { showToast } from './ui.js';
 import { sfx } from './audio.js';
 
@@ -42,32 +53,22 @@ function activatePortal(p) {
 }
 
 // ---------- 🌍 Штамп площадки в мире (при генерации чанка) ----------
-// Кладём/убираем блок, только если он внутри ЭТОГО чанка
-const key = (x, y, z) => x + ',' + y + ',' + z;
-function put(data, x0, z0, x, y, z, t) {
-  if (x < x0 || x > x0 + 15 || z < z0 || z > z0 + 15) return;
-  data.set(key(x, y, z), t);
-}
-function del(data, x0, z0, x, y, z) {
-  if (x < x0 || x > x0 + 15 || z < z0 || z > z0 + 15) return;
-  data.delete(key(x, y, z));
-}
-
 export function stampPortals(data, cx, cz) {
   const x0 = cx * 16, z0 = cz * 16;
   for (const p of PORTALS) {
     if (p.x + 2 < x0 || p.x - 2 > x0 + 15 || p.z + 2 < z0 || p.z - 2 > z0 + 15) continue;
     const h = hillH(p.x, p.z);
+    const P = (dx, y, dz, t) => put(data, x0, z0, p.x + dx, y, p.z + dz, t);
+    const D = (dx, y, dz) => del(data, x0, z0, p.x + dx, y, p.z + dz);
     // Площадка 3×3 из каменного кирпича, светокамень в центре
     for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
-      for (let y = h + 1; y <= h + 4; y++) del(data, x0, z0, p.x + dx, y, p.z + dz); // расчистить воздух
-      put(data, x0, z0, p.x + dx, h, p.z + dz, 'stoneBricks');
+      for (let y = h + 1; y <= h + 4; y++) D(dx, y, dz); // расчистить воздух над площадкой
+      P(dx, h, dz, 'stoneBricks');
     }
-    put(data, x0, z0, p.x, h, p.z, 'glowstone'); // светящееся сердце портала
+    P(0, h, 0, 'glowstone'); // светящееся сердце портала
     // 4 световых столбика по углам
     for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      put(data, x0, z0, p.x + dx, h + 1, p.z + dz, 'fence');
-      put(data, x0, z0, p.x + dx, h + 2, p.z + dz, 'glowstone');
+      P(dx, h + 1, dz, 'fence'); P(dx, h + 2, dz, 'glowstone');
     }
   }
 }
