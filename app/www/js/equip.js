@@ -8,6 +8,7 @@
 
 import { emit } from './bus.js';
 import { skillRank } from './skills.js';
+import { hasArtifact } from './artifacts.js';
 
 // Урон каждого оружия ('sword' — старый меч из прошлых сохранений)
 export const WEAPON_DMG = {
@@ -88,12 +89,14 @@ export function equipItem(G, type, NAMES) {
 export function weaponDamage(G) {
   const w = gear(G).weapon;
   if (w && WEAPON_DMG[w] !== undefined && owns(G, w))
-    return WEAPON_DMG[w] + skillRank(G, 'sword');
+    return WEAPON_DMG[w] + skillRank(G, 'sword')
+      + (hasArtifact(G, 'artiFrostShard') ? 3 : 0); // ❄️ Осколок мерзлоты
   return 1;
 }
 
 // Защита от ударов монстров
 export function armorValue(G) {
   const a = gear(G).armor;
-  return a && owns(G, a) ? ARMOR_VAL[a] : 0;
+  return (a && owns(G, a) ? ARMOR_VAL[a] : 0)
+    + (hasArtifact(G, 'artiGolemCore') ? 2 : 0); // 🗿 Ядро голема
 }
