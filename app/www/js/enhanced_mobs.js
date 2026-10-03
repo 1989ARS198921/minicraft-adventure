@@ -930,6 +930,271 @@ function createVampireModel() {
 
 // ==================== РЕГИСТРАЦИЯ МОДЕЛЕЙ ====================
 
+
+// ============================================================
+//  👑 УНИКАЛЬНЫЕ МОДЕЛИ БОССОВ (не увеличенные копии обычных!)
+// ============================================================
+
+// 💀 НЕКРОМАНТ: ряса с капюшоном, посох с черепом, светящиеся глаза
+function createNecromancerModel() {
+    const group = new THREE.Group();
+    group.userData.type = 'necromancer';
+
+    const robe = bodyPart({ w: 0.9, h: 1.5, d: 0.6, color: 0x2a1a3a });
+    robe.position.y = 0.95;
+    group.add(robe);
+    const trim = bodyPart({ w: 0.94, h: 0.25, d: 0.64, color: 0x6a2a8a });
+    trim.position.y = 0.35;
+    group.add(trim);
+    // Пояс с черепком и книга мёртвых в левой руке
+    const beltSkull = bodyPart({ w: 0.14, h: 0.14, d: 0.08, color: 0xe8e0d0 });
+    beltSkull.position.set(0, 0.95, 0.33);
+    group.add(beltSkull);
+    const book = bodyPart({ w: 0.26, h: 0.34, d: 0.1, color: 0x5a1a1a });
+    book.position.set(-0.62, 1.15, 0.25);
+    group.add(book);
+    const hood = bodyPart({ w: 0.55, h: 0.5, d: 0.55, color: 0x1a0a2a });
+    hood.position.y = 1.95;
+    group.add(hood);
+    // Лицо-тень со светящимися глазами
+    const face = bodyPart({ w: 0.4, h: 0.35, d: 0.05, color: 0x0a0512 });
+    face.position.set(0, 1.9, 0.28);
+    group.add(face);
+    for (const ex of [-0.1, 0.1]) {
+        const eye = bodyPart({ w: 0.07, h: 0.07, d: 0.04, color: 0x9b59b6, emissive: 0x9b59b6 });
+        eye.position.set(ex, 1.92, 0.31);
+        group.add(eye);
+    }
+    // Рукава
+    for (const side of [-1, 1]) {
+        const sleeve = bodyPart({ w: 0.22, h: 0.8, d: 0.3, color: 0x2a1a3a });
+        sleeve.position.set(side * 0.55, 1.2, 0);
+        group.add(sleeve);
+    }
+    // Посох: древко + череп + кристалл
+    const staff = bodyPart({ w: 0.08, h: 2.0, d: 0.08, color: 0x4a3a2a });
+    staff.position.set(0.72, 1.3, 0.1);
+    group.add(staff);
+    const skull = bodyPart({ w: 0.22, h: 0.2, d: 0.22, color: 0xe8e0d0 });
+    skull.position.set(0.72, 2.4, 0.1);
+    group.add(skull);
+    const gem = bodyPart({ w: 0.14, h: 0.14, d: 0.14, color: 0x9b59b6, emissive: 0x9b59b6 });
+    gem.position.set(0.72, 2.6, 0.1);
+    group.add(gem);
+    return group;
+}
+
+// 🐙 КРАКЕН: голова-мешок с глазами и восемь щупалец
+function createKrakenModel() {
+    const group = new THREE.Group();
+    group.userData.type = 'kraken';
+
+    const head = bodyPart({ w: 1.6, h: 1.6, d: 1.6, color: 0x3a4a7a });
+    head.position.y = 1.7;
+    group.add(head);
+    const crown = bodyPart({ w: 1.2, h: 0.5, d: 1.2, color: 0x4a5a8a });
+    crown.position.y = 2.6;
+    group.add(crown);
+    // Глаза-блюдца
+    for (const ex of [-0.4, 0.4]) {
+        const eye = bodyPart({ w: 0.3, h: 0.3, d: 0.06, color: 0xffd24a, emissive: 0xffd24a });
+        eye.position.set(ex, 1.8, 0.82);
+        group.add(eye);
+        const pupil = bodyPart({ w: 0.12, h: 0.12, d: 0.04, color: 0x101018 });
+        pupil.position.set(ex, 1.8, 0.86);
+        group.add(pupil);
+    }
+    // Клюв
+    const beak = bodyPart({ w: 0.3, h: 0.25, d: 0.2, color: 0x2a2a3a });
+    beak.position.set(0, 1.35, 0.8);
+    group.add(beak);
+    // Восемь щупалец веером
+    for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const tent = bodyPart({ w: 0.28, h: 1.3, d: 0.28, color: i % 2 ? 0x3a5a7a : 0x2a4a6a });
+        tent.position.set(Math.cos(a) * 0.95, 0.55, Math.sin(a) * 0.95);
+        tent.rotation.z = Math.cos(a) * 0.35;
+        tent.rotation.x = -Math.sin(a) * 0.35;
+        group.add(tent);
+        const tip = bodyPart({ w: 0.18, h: 0.5, d: 0.18, color: 0x5a7aaa });
+        tip.position.set(Math.cos(a) * 1.25, 0.15, Math.sin(a) * 1.25);
+        group.add(tip);
+    }
+    return group;
+}
+
+// 🔥 ОГНЕННЫЙ ЭЛЕМЕНТАЛЬ: горящее ядро, плавающие угли, рога пламени
+function createFireElementalModel() {
+    const group = new THREE.Group();
+    group.userData.type = 'fire_elemental';
+
+    const core = bodyPart({ w: 1.0, h: 1.2, d: 1.0, color: 0xff6633, emissive: 0xff4400 });
+    core.position.y = 1.3;
+    group.add(core);
+    const chest = bodyPart({ w: 0.7, h: 0.5, d: 0.7, color: 0xffcc44, emissive: 0xffaa00 });
+    chest.position.y = 1.5;
+    group.add(chest);
+    const headF = bodyPart({ w: 0.6, h: 0.55, d: 0.6, color: 0xff7733, emissive: 0xff5500 });
+    headF.position.y = 2.25;
+    group.add(headF);
+    for (const ex of [-0.14, 0.14]) {
+        const eye = bodyPart({ w: 0.1, h: 0.1, d: 0.05, color: 0xffff88, emissive: 0xffff44 });
+        eye.position.set(ex, 2.28, 0.31);
+        group.add(eye);
+    }
+    // Рога пламени
+    for (const side of [-1, 1]) {
+        const horn = bodyPart({ w: 0.12, h: 0.45, d: 0.12, color: 0xffaa33, emissive: 0xff8800 });
+        horn.position.set(side * 0.28, 2.65, 0);
+        horn.rotation.z = side * 0.3;
+        group.add(horn);
+    }
+    // Руки-угли
+    for (const side of [-1, 1]) {
+        const arm = bodyPart({ w: 0.3, h: 0.9, d: 0.3, color: 0xcc4422, emissive: 0xaa2200 });
+        arm.position.set(side * 0.75, 1.35, 0);
+        group.add(arm);
+        const fist = bodyPart({ w: 0.34, h: 0.3, d: 0.34, color: 0xffcc44, emissive: 0xffaa00 });
+        fist.position.set(side * 0.75, 0.8, 0);
+        group.add(fist);
+    }
+    // Парящие угли вокруг
+    for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const ember = bodyPart({ w: 0.14, h: 0.14, d: 0.14, color: 0xffaa33, emissive: 0xff8800 });
+        ember.position.set(Math.cos(a) * 1.0, 0.6 + i * 0.35, Math.sin(a) * 1.0);
+        group.add(ember);
+    }
+    return group;
+}
+
+// ⚔️ ТЁМНЫЙ РЫЦАРЬ: полные латы, плюмаж, огромный меч и щит
+function createDarkKnightModel() {
+    const group = new THREE.Group();
+    group.userData.type = 'dark_knight';
+
+    const body = bodyPart({ w: 0.95, h: 1.1, d: 0.6, color: 0x2a2a3a });
+    body.position.y = 1.35;
+    group.add(body);
+    const belt = bodyPart({ w: 0.99, h: 0.15, d: 0.64, color: 0x8a0a1a });
+    belt.position.y = 0.9;
+    group.add(belt);
+    // Наплечники
+    for (const side of [-1, 1]) {
+        const pad = bodyPart({ w: 0.34, h: 0.22, d: 0.5, color: 0x3a3a4a });
+        pad.position.set(side * 0.62, 1.85, 0);
+        group.add(pad);
+        const arm = bodyPart({ w: 0.24, h: 0.8, d: 0.28, color: 0x2a2a3a });
+        arm.position.set(side * 0.62, 1.3, 0);
+        group.add(arm);
+    }
+    // Шлем с забралом и плюмажем
+    const helm = bodyPart({ w: 0.55, h: 0.55, d: 0.55, color: 0x3a3a4a });
+    helm.position.y = 2.15;
+    group.add(helm);
+    const visor = bodyPart({ w: 0.45, h: 0.1, d: 0.05, color: 0x0a0a12 });
+    visor.position.set(0, 2.15, 0.28);
+    group.add(visor);
+    for (const ex of [-0.12, 0.12]) {
+        const eye = bodyPart({ w: 0.07, h: 0.05, d: 0.04, color: 0xff2222, emissive: 0xff0000 });
+        eye.position.set(ex, 2.15, 0.3);
+        group.add(eye);
+    }
+    const plume = bodyPart({ w: 0.12, h: 0.45, d: 0.3, color: 0x8a0a1a });
+    plume.position.y = 2.6;
+    group.add(plume);
+    // Меч в правой руке
+    const blade = bodyPart({ w: 0.1, h: 1.5, d: 0.22, color: 0xb8b8c8 });
+    blade.position.set(0.75, 1.6, 0.15);
+    group.add(blade);
+    const guard = bodyPart({ w: 0.34, h: 0.08, d: 0.3, color: 0x6a5a2a });
+    guard.position.set(0.75, 0.85, 0.15);
+    group.add(guard);
+    // Щит в левой
+    const shield = bodyPart({ w: 0.12, h: 0.9, d: 0.7, color: 0x3a3a4a });
+    shield.position.set(-0.78, 1.25, 0.1);
+    group.add(shield);
+    const emblem = bodyPart({ w: 0.06, h: 0.3, d: 0.3, color: 0x8a0a1a, emissive: 0x5a0a12 });
+    emblem.position.set(-0.86, 1.25, 0.1);
+    group.add(emblem);
+    // Поножи
+    for (const side of [-1, 1]) {
+        const leg = bodyPart({ w: 0.28, h: 0.6, d: 0.32, color: 0x2a2a3a });
+        leg.position.set(side * 0.25, 0.45, 0);
+        group.add(leg);
+    }
+    return group;
+}
+
+// 👑 КОРОЛЬ ГОБЛИНОВ: большой гоблин с короной, плащом и скипетром
+function createGoblinKingModel() {
+    const group = new THREE.Group();
+    group.userData.type = 'goblin_king';
+
+    const body = bodyPart({ w: 0.85, h: 1.0, d: 0.55, color: 0x4a8a2a });
+    body.position.y = 1.15;
+    group.add(body);
+    // Плащ
+    const cape = bodyPart({ w: 0.9, h: 1.1, d: 0.12, color: 0x8a0a1a });
+    cape.position.set(0, 1.1, -0.34);
+    group.add(cape);
+    // Голова с большими ушами
+    const head = bodyPart({ w: 0.7, h: 0.6, d: 0.6, color: 0x5a9a3a });
+    head.position.y = 2.0;
+    group.add(head);
+    for (const side of [-1, 1]) {
+        const ear = bodyPart({ w: 0.3, h: 0.14, d: 0.1, color: 0x5a9a3a });
+        ear.position.set(side * 0.5, 2.1, 0);
+        ear.rotation.z = side * 0.25;
+        group.add(ear);
+    }
+    for (const ex of [-0.16, 0.16]) {
+        const eye = bodyPart({ w: 0.1, h: 0.1, d: 0.05, color: 0xffd030, emissive: 0xffd030 });
+        eye.position.set(ex, 2.02, 0.31);
+        group.add(eye);
+    }
+    // Нос и клыки
+    const nose = bodyPart({ w: 0.12, h: 0.16, d: 0.1, color: 0x4a8a2a });
+    nose.position.set(0, 1.9, 0.34);
+    group.add(nose);
+    for (const side of [-1, 1]) {
+        const tusk = bodyPart({ w: 0.06, h: 0.14, d: 0.06, color: 0xf5f5dc });
+        tusk.position.set(side * 0.12, 1.78, 0.3);
+        group.add(tusk);
+    }
+    // Корона с тремя зубцами
+    const crown = bodyPart({ w: 0.5, h: 0.14, d: 0.5, color: 0xffd700 });
+    crown.position.y = 2.36;
+    group.add(crown);
+    for (let i = -1; i <= 1; i++) {
+        const spike = bodyPart({ w: 0.1, h: 0.16, d: 0.1, color: 0xffd700 });
+        spike.position.set(i * 0.18, 2.5, 0);
+        group.add(spike);
+    }
+    const gemC = bodyPart({ w: 0.12, h: 0.1, d: 0.04, color: 0xcc0022, emissive: 0xcc0022 });
+    gemC.position.set(0, 2.36, 0.26);
+    group.add(gemC);
+    // Руки и скипетр
+    for (const side of [-1, 1]) {
+        const arm = bodyPart({ w: 0.2, h: 0.7, d: 0.22, color: 0x4a8a2a });
+        arm.position.set(side * 0.55, 1.1, 0);
+        group.add(arm);
+    }
+    const scepter = bodyPart({ w: 0.07, h: 1.2, d: 0.07, color: 0xffd700 });
+    scepter.position.set(0.65, 1.4, 0.1);
+    group.add(scepter);
+    const orb = bodyPart({ w: 0.18, h: 0.18, d: 0.18, color: 0x5ce8e0, emissive: 0x5ce8e0 });
+    orb.position.set(0.65, 2.1, 0.1);
+    group.add(orb);
+    // Ноги
+    for (const side of [-1, 1]) {
+        const leg = bodyPart({ w: 0.24, h: 0.5, d: 0.26, color: 0x3a6a1a });
+        leg.position.set(side * 0.22, 0.35, 0);
+        group.add(leg);
+    }
+    return group;
+}
+
 const MOB_MODELS = {
     // Обычные монстры
     goblin: createGoblinModel,
@@ -949,11 +1214,11 @@ const MOB_MODELS = {
     ice_dragon: createIceDragonModel,
     // Остальные боссы используют увеличенные версии обычных с кастомными скинами
     spider_queen: createSpiderModel,
-    necromancer: createSkeletonModel,
-    kraken: createSlimeModel,
-    fire_elemental: createGhostModel,
-    dark_knight: createSkeletonModel,
-    goblin_king: createGoblinModel,
+    necromancer: createNecromancerModel,
+    kraken: createKrakenModel,
+    fire_elemental: createFireElementalModel,
+    dark_knight: createDarkKnightModel,
+    goblin_king: createGoblinKingModel,
     ice_troll: createTrollModel
 };
 
