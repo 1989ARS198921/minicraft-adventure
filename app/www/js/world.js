@@ -7,10 +7,16 @@
 
 import * as THREE from 'three';
 import { CONFIG, TRANSPARENT, SMALL, WALKTHROUGH } from './config.js';
-import { chunkMat, chunkMatGlass, chunkMatWater, TILES, FLOWER_RED, FLOWER_YELLOW } from './textures.js';
+import { chunkMat, chunkMatGlass, chunkMatWater, chunkMatLava, TILES, FLOWER_RED, FLOWER_YELLOW } from './textures.js';
 import { stampSettlements, inAnyVillage } from './village.js';
 import { stampDungeon } from './dungeon.js';
 import { stampCities } from './surface_cities.js';
+import { stampHogwarts } from './hogwarts.js';
+import { stampScatter } from './scatter.js';
+import { stampLairs } from './lairs.js';
+import { stampKaschey, stampYaga } from './fairytale.js';
+import { stampPortals } from './portals.js';
+import { stampQuestSites } from './quest_locations.js';
 import { emit } from './bus.js';
 
 let G = null; // игровой контекст (даёт main.js при инициализации)
@@ -28,6 +34,11 @@ export const ckey = (cx, cz) => cx + ',' + cz;
 
 // Доступ к данным для модуля сохранения
 export function getDeltas() { return deltas; }
+// Блок поставлен/изменён именно игроком? (не часть сгенерированного мира)
+export function isDelta(x, y, z) {
+  const d = deltas[ckey(Math.floor(x / CHUNK), Math.floor(z / CHUNK))];
+  return !!(d && d[x + ',' + y + ',' + z]);
+}
 export function setDeltas(obj) { Object.assign(deltas, obj); }
 
 // ---------- СЛУЧАЙНОСТЬ С «ЗЕРНЕМ» ----------
@@ -279,6 +290,17 @@ function genChunkData(cx, cz) {
   stampDungeon(data, cx, cz);
   // 🏙️ Штампуем большие города: стены, дома, площадь с фонтаном
   stampCities(data, cx, cz);
+  // 🏰 Штампуем Хогвартс — школу магии
+  stampHogwarts(data, cx, cz);
+  // 🌍 Живой мир: находки, лагеря монстров, валуны
+  stampScatter(data, cx, cz);
+  // ⚔️ Логова монстров + сказочные локации (Кащей, Яга)
+  stampLairs(data, cx, cz);
+  stampKaschey(data, cx, cz);
+  stampYaga(data, cx, cz);
+  stampPortals(data, cx, cz); // 🔵 порталы
+  // 🗺️ Штампуем квестовые локации: кладбище, логово, руины, лагерь, алтарь
+  stampQuestSites(data, cx, cz);
   // 🕳️🌥️ Подземелье и небесные острова (классические скрипты underground.js/skyworld.js)
   try { if (typeof generateUnderground === 'function') generateUnderground(data, cx, cz); } catch (e) { /* мир важнее */ }
   try { if (typeof generateSkyWorld === 'function') generateSkyWorld(data, cx, cz); } catch (e) { /* мир важнее */ }
@@ -312,13 +334,41 @@ const SHAPES = {
   mushroom:[{ x0: 0.3, y0: 0, z0: 0.3, x1: 0.7, y1: 0.35, z1: 0.7 }],
   bush:    [{ x0: 0.15, y0: 0, z0: 0.15, x1: 0.85, y1: 0.6, z1: 0.85 }],
   glowshroom:[{ x0: 0.3, y0: 0, z0: 0.3, x1: 0.7, y1: 0.35, z1: 0.7 }],
-  rail:    [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 0.15, z1: 1 }]
+  rail:    [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 0.15, z1: 1 }],
+  // 🧱 Плита — половинка блока (низ)
+  slab:    [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 0.5, z1: 1 }],
+  // 🥅 Забор: столбик посередине + перекладины в обе стороны
+  fence:   [{ x0: 0.375, y0: 0, z0: 0.375, x1: 0.625, y1: 1, z1: 0.625 },
+            { x0: 0, y0: 0.55, z0: 0.44, x1: 1, y1: 0.75, z1: 0.56 },
+            { x0: 0, y0: 0.15, z0: 0.44, x1: 1, y1: 0.35, z1: 0.56 },
+            { x0: 0.44, y0: 0.55, z0: 0, x1: 0.56, y1: 0.75, z1: 1 },
+            { x0: 0.44, y0: 0.15, z0: 0, x1: 0.56, y1: 0.35, z1: 1 }],
+  // ↩️ Ступеньки, повёрнутые в разные стороны (stair = юг, как раньше)
+  stairN:  [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 0.5, z1: 1 },
+            { x0: 0, y0: 0.5, z0: 0, x1: 1, y1: 1, z1: 0.5 }],
+  stairE:  [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 0.5, z1: 1 },
+            { x0: 0.5, y0: 0.5, z0: 0, x1: 1, y1: 1, z1: 1 }],
+  stairW:  [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 0.5, z1: 1 },
+            { x0: 0, y0: 0.5, z0: 0, x1: 0.5, y1: 1, z1: 1 }],
+  // 🚪 Открытая дверь — повёрнута на 90° (приоткрылась вбок)
+  doorOpen:    [{ x0: 0, y0: 0, z0: 0.4, x1: 1, y1: 1, z1: 0.6 }],
+  doorTopOpen: [{ x0: 0, y0: 0, z0: 0.4, x1: 1, y1: 1, z1: 0.6 }]
 };
 const CUBE = [{ x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 }];
 
 // Добавить грани блока в «корзинку» геометрии (свою для прозрачных!)
 // skyTop — высота самого верхнего непрозрачного блока в этом столбике:
 // всё, что глубже под ним, — в тени земли (пещеры тёмные!) 🕳️
+// Оттенки травы по биомам (умножают цвет вершин)
+const WT = [1, 1, 1]; // белый — без оттенка
+const GRASS_TINT = {
+  forest:    [0.78, 1.05, 0.72], // густая тёмная зелень
+  plains:    WT,
+  desert:    [1.12, 0.98, 0.50], // выжженная солома
+  snow:      [0.85, 0.95, 1.08], // холодная бледность
+  mountains: [0.88, 0.96, 0.85]  // скудная горная
+};
+
 function pushBlock(bag, x, y, z, type, skyTop) {
   // Какая плитка атласа на верх/бок/низ этого блока
   let [ti, ts, tb] = TILES[type] || TILES.stone; // неизвестный блок рисуем камнем
@@ -357,8 +407,10 @@ function pushBlock(bag, x, y, z, type, skyTop) {
           y + box.y0 + corner[1] * (box.y1 - box.y0),
           z + box.z0 + corner[2] * (box.z1 - box.z0));
         bag.nor.push(f.n[0], f.n[1], f.n[2]);
-        // Цвет вершины теперь несёт только свет/тень — узор даёт атлас!
-        bag.col.push(shade, shade, shade);
+        // Цвет вершины = свет/тень × оттенок биома (трава желтеет
+        // у пустыни, бледнеет у снега, густо зеленеет в лесу!)
+        const tint = type === 'grass' ? (GRASS_TINT[biomeAt(x, z)] || WT) : WT;
+        bag.col.push(shade * tint[0], shade * tint[1], shade * tint[2]);
       }
       // Растягиваем кусочек атласа на грань: размер кусочка = размер грани
       const w = box.x1 - box.x0, h = box.y1 - box.y0, d = box.z1 - box.z0;
@@ -390,9 +442,12 @@ function buildChunk(cx, cz) {
   const solid = { pos: [], nor: [], uv: [], col: [], idx: [], vc: 0 };
   const glass = { pos: [], nor: [], uv: [], col: [], idx: [], vc: 0 };
   const water = { pos: [], nor: [], uv: [], col: [], idx: [], vc: 0 };
+  const lava = { pos: [], nor: [], uv: [], col: [], idx: [], vc: 0 };
   for (const [k, type] of ch.data) {
     const [x, y, z] = k.split(',').map(Number);
-    const bag = type === 'water' ? water : TRANSPARENT.has(type) ? glass : solid;
+    const bag = type === 'water' ? water
+      : (type === 'lava' || type === 'portal' || type === 'portalActive') ? lava
+      : TRANSPARENT.has(type) ? glass : solid;
     pushBlock(bag, x, y, z, type, skyMap.get(x + ',' + z) ?? y);
   }
   // Обычные блоки
@@ -430,6 +485,20 @@ function buildChunk(cx, cz) {
     G.scene.remove(ch.meshWater);
     ch.meshWater.geometry.dispose();
     ch.meshWater = null;
+  }
+  // Лава и портал — отдельной сеткой: их текстура течёт и светится
+  if (lava.pos.length) {
+    if (ch.meshLava) {
+      ch.meshLava.geometry.dispose();
+      ch.meshLava.geometry = makeGeometry(lava);
+    } else {
+      ch.meshLava = new THREE.Mesh(makeGeometry(lava), chunkMatLava);
+      G.scene.add(ch.meshLava);
+    }
+  } else if (ch.meshLava) {
+    G.scene.remove(ch.meshLava);
+    ch.meshLava.geometry.dispose();
+    ch.meshLava = null;
   }
 }
 
