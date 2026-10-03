@@ -11,8 +11,8 @@ export const CONFIG = {
   WORLD_LIMIT: 500,     // границы мира: ±500 блоков
   BEDROCK_Y: -5,        // ниже — непробиваемая скала
   WATER_Y: 2,           // уровень воды: низины ниже — озёра!
-  BUILD_MAX_Y: 30,      // выше этого неба строить нельзя
-  GROUND_SCAN_TOP: 40,  // откуда сверху ищем землю под ногами
+  BUILD_MAX_Y: 120,     // выше этого неба строить нельзя (острова — можно!)
+  GROUND_SCAN_TOP: 120, // откуда сверху ищем землю под ногами (до небесных островов!)
 
   // --- Игрок ---
   EYE: 1.5,             // глаза на 1.5 блока выше ног
@@ -40,6 +40,7 @@ export const COLORS = {
   grass: 0x4FCB24,   // трава — ярко-зелёная
   dirt:  0x8B5A2B,   // земля — коричневая
   trunk: 0xB5651D,   // ствол дерева — оранжево-коричневый
+  chest: 0x9A6A2F,   // сундук — тёмное дерево с золотом
   leaf:  0x2E8B22,   // листва — тёмно-зелёная
   stone: 0x9A9A9A,   // камень — серый
   sand:  0xE8D78A,   // песок — жёлтый (пустыня)
@@ -53,6 +54,9 @@ export const COLORS = {
   goldOre: 0xE8B73C, // золото — жёлто блестит
   diamondOre: 0x5CE8E0, // алмазы — бирюзовые
   stair: 0x8C8C8C,   // ступенька — каменная, половинка кубика
+  fence: 0xC89B5A,      // забор — как доски
+  slab: 0xC89B5A,       // плита — как доски
+  stoneBricks: 0x9A6A5A, glowstone: 0xFFD75E, obsidian: 0x1A1025, whiteWool: 0xF4F8FF,
   door: 0xA5682A,    // дверь — деревянная, сквозь неё можно пройти
   doorTop: 0xA5682A, // верхняя половинка двери
   torch: 0xFFCC66,   // факел — тёплый жёлтый (для иконок и частиц)
@@ -72,13 +76,15 @@ export const COLORS = {
 export const TRANSPARENT = new Set(['water', 'glass', 'crystal', 'cloud', 'portal', 'portalActive']);
 
 // Маленькие фигурки: не кубики, рисуем все их грани
-export const SMALL = new Set(['flower', 'mushroom', 'bush', 'stair', 'door', 'doorTop', 'glowshroom', 'rail']);
+export const SMALL = new Set(['flower', 'mushroom', 'bush', 'stair', 'stairN', 'stairE', 'stairW', 'door', 'doorTop', 'doorOpen', 'doorTopOpen', 'slab', 'fence', 'glowshroom', 'rail']);
 
 // Сквозь эти блоки можно пройти (не стоишь на них, а проходишь)
-export const WALKTHROUGH = new Set(['water', 'flower', 'mushroom', 'bush', 'door', 'doorTop', 'cloud', 'glowshroom', 'portal', 'portalActive', 'rail']);
+export const WALKTHROUGH = new Set(['water', 'flower', 'mushroom', 'bush', 'door', 'doorTop', 'doorOpen', 'doorTopOpen', 'cloud', 'glowshroom', 'portal', 'portalActive', 'rail']);
 
 // Что можно ставить из инвентаря (слоты 1-9 и 0)
 export const PLACEABLE = ['dirt', 'planks', 'stone', 'brick', 'sand', 'glass', 'leaf', 'stair', 'door', 'torch'];
+// 🎒 Дополнительные блоки: живут в рюкзаке, тапом меняют выбранный слот
+export const EXTRA_PLACEABLE = ['fence', 'slab', 'stoneBricks', 'glowstone', 'obsidian', 'snow', 'cactus', 'whiteWool', 'flower', 'bush', 'chest'];
 
 // Что выпадает в карман, когда ломаешь блок.
 // Дерево → доски, уголь → факел (как настоящий крафт!). Остальное — само себя.
@@ -86,14 +92,18 @@ export const DROPS = {
   grass: 'dirt', dirt: 'dirt', sand: 'sand', stone: 'stone',
   trunk: 'planks', leaf: 'leaf', brick: 'brick', glass: 'glass',
   torch: 'torch', stair: 'stair', door: 'door', doorTop: 'door',
+  stairN: 'stair', stairE: 'stair', stairW: 'stair',
+  doorOpen: 'door', doorTopOpen: 'door', fence: 'fence', slab: 'slab',
   coalOre: 'torch',
-  flower: 'flower', mushroom: 'mushroom' // цветы и грибы — для зелий волшебника!
+  flower: 'flower', mushroom: 'mushroom', // цветы и грибы — для зелий волшебника!
+  crystal: 'crystal', // хрусталь с парящих островов — для торговли в небе!
+  obsidian: 'obsidian', glowstone: 'glowstone' // магические блоки теперь добываются!
 };
 
 // Стартовый набор нового игрока (Infinity = бесконечный запас)
 export const STARTER_INV = {
   dirt: 10, planks: 5, stone: 0, brick: 0, sand: 0, glass: 0,
-  leaf: 0, stair: Infinity, door: Infinity, torch: 5,
+  leaf: 0, stair: Infinity, door: Infinity, torch: 5, fence: Infinity, slab: Infinity,
   apple: 1, firewood: 0, matches: 0,          // одно яблочко на дорогу 🍎
   flower: 0, mushroom: 0,                      // ингредиенты для зелий
   potionHealth: 0, potionSpeed: 0, potionJump: 0
