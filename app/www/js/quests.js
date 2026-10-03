@@ -17,6 +17,19 @@ export const QUESTS = [
   //  1. БАЗОВЫЕ КВЕСТЫ (обучение)
   // ============================================================
   { id: 'break1',  text: 'Сломай первый блок' },
+  // 🗺️ КВЕСТОВЫЕ ЛОКАЦИИ: у задания есть настоящее место в мире!
+  { id: 'find_graveyard', text: 'Найди заброшенное кладбище 🪦 (смотри на компас 🧭)' },
+  { id: 'vampire_clear', text: 'Зачисти кладбище от вампиров 🧛', need: 8 },
+  { id: 'find_wolfden', text: 'Найди волчье логово 🐺' },
+  { id: 'find_ruins', text: 'Найди проклятые руины 🏚️' },
+  { id: 'find_orccamp', text: 'Найди орочий лагерь 👹' },
+  { id: 'find_darkaltar', text: 'Найди алтарь Некроманта 💀' },
+  { id: 'sky_island_visit', text: 'Побывай на парящем острове ☁️' },
+  { id: 'cloud_city_visit', text: 'Найди город в облаках 🏙️' },
+  { id: 'crystal_mine', text: 'Добудь 5 хрусталей на островах 💠', need: 5 },
+  { id: 'vampire_hunter', text: 'Победи 5 вампиров 🧛', need: 5 },
+  { id: 'arti_first', text: 'Найди первый артефакт ✨' },
+  { id: 'arti_5', text: 'Собери 5 артефактов ✨', need: 5 },
   { id: 'place1',  text: 'Поставь первый блок' },
   { id: 'dig',     text: 'Выкопай траву' },
   { id: 'jump',    text: 'Подпрыгни' },
@@ -165,7 +178,35 @@ export const QUESTS = [
   { id: 'under2', city: 'under', after: 'under1', text: '⛏️ Подземный: Поговори со старшиной Кромом' },
   { id: 'under3', city: 'under', after: 'under2', need: 10, text: '⛏️ Подземный: Победи 10 пауков в штольнях' },
   { id: 'under4', city: 'under', after: 'under3', text: '⛏️ Подземный: Победи Каменного голема 🗿' },
-  { id: 'under5', city: 'under', after: 'under4', text: '⛏️ Подземный: Вернись к старшине за наградой!' }
+  { id: 'under5', city: 'under', after: 'under4', text: '⛏️ Подземный: Вернись к старшине за наградой!' },
+  // ============================================================
+  // 🏰 Хогвартс: задания Гарри Поттера
+  { id: 'hogwarts1', city: 'hogwarts', need: 5, text: '🏰 Хогвартс: Прогони 5 пауков из леса к западу от замка' },
+  { id: 'hogwarts2', city: 'hogwarts', after: 'hogwarts1', text: '🏰 Хогвартс: Расскажи Гарри о победе над пауками' },
+  { id: 'hogwarts3', city: 'hogwarts', after: 'hogwarts2', need: 5, text: '🏰 Хогвартс: Собери 5 светокамня на небесных островах (2×Прыжок — полёт!)' },
+  { id: 'hogwarts4', city: 'hogwarts', after: 'hogwarts3', need: 4, text: '🏰 Хогвартс: Изгони 4 призраков у башен замка (приходи ночью)' },
+  { id: 'hogwarts5', city: 'hogwarts', after: 'hogwarts4', text: '🏰 Хогвартс: Вернись к Гарри — стань Почётным волшебником!' },
+  // ============================================================
+  // 💀 Кащей Бессмертный: тёмные поручения
+  { id: 'kaschey1', city: 'kaschey', need: 6, text: '💀 Кащей: Победи 6 скелетов-стражей замка' },
+  { id: 'kaschey2', city: 'kaschey', after: 'kaschey1', text: '💀 Кащей: Вернись к Кащею Бессмертному' },
+  { id: 'kaschey3', city: 'kaschey', after: 'kaschey2', need: 5, text: '💀 Кащей: Добудь 5 обсидиана для тёмного трона' },
+  { id: 'kaschey4', city: 'kaschey', after: 'kaschey3', need: 4, text: '💀 Кащей: Изгони 4 призраков из темницы' },
+  { id: 'kaschey5', city: 'kaschey', after: 'kaschey4', text: '💀 Кащей: Вернись за наградой Бессмертного!' },
+  // ============================================================
+  // 🧹 Баба Яга: лесные поручения
+  { id: 'yaga1', city: 'yaga', need: 8, text: '🧹 Яга: Набери 8 грибов для зелья (ищи в лесу)' },
+  { id: 'yaga2', city: 'yaga', after: 'yaga1', text: '🧹 Яга: Принеси грибы Бабе Яге' },
+  { id: 'yaga3', city: 'yaga', after: 'yaga2', need: 3, text: '🧹 Яга: Прогони 3 волков от избушки' },
+  { id: 'yaga4', city: 'yaga', after: 'yaga3', need: 6, text: '🧹 Яга: Собери 6 цветов для отвара' },
+  { id: 'yaga5', city: 'yaga', after: 'yaga4', text: '🧹 Яга: Вернись к Яге — получи награду!' },
+  // ============================================================
+  // ⚔️ Истребитель логов: 6 логов по краям карты
+  { id: 'lairHunter', need: 6, text: '⚔️ Истребитель логов: разгроми 6 логов монстров (сундуки на краях карты)' },
+
+  // 🌟 СКВОЗНАЯ ЦЕЛЬ — «Легенда о герое»: печати логов против Кащея!
+  { id: 'legend_seals', need: 6, text: '🔮 Легенда: собери 6 печатей силы из логов монстров' },
+  { id: 'legend_face', after: 'legend_seals', text: '💀 Легенда: предъяви печати Кащею в его замке!' }
 ];
 
 // ============================================================
@@ -186,17 +227,37 @@ const qList = () => document.getElementById('qList');
 export function renderQuests() {
   const list = qList();
   if (!list) return;
-  
-  // Шаги цепочек прячем, пока не выполнен предыдущий шаг
-  list.innerHTML = QUESTS.filter(q => !q.after || questState[q.after].done).map(q => {
-    const st = questState[q.id];
-    const progress = q.need ? ` (${Math.min(st.count, q.need)}/${q.need})` : '';
-    return `<li class="${st.done ? 'done' : ''}">${st.done ? '✅' : '⬜'} ${q.text}${progress}</li>`;
-  }).join('');
-  
-  const done = QUESTS.filter(q => questState[q.id].done).length;
+
+  const unlocked = QUESTS.filter(q => !q.after || questState[q.after].done);
+  const active = unlocked.filter(q => !questState[q.id].done);
+  const done = unlocked.filter(q => questState[q.id].done);
+  const prog = q => q.need ? ` (${Math.min(questState[q.id].count, q.need)}/${q.need})` : '';
+
+  let html = '';
+  // ⭐ Главная цель: сюжетная цепочка легенды или истребитель логов
+  const star = active.find(q => q.id.startsWith('legend')) || active.find(q => q.id === 'lairHunter');
+  if (star) html += `<li class="star">⭐ Цель: ${star.text}${prog(star)}</li>`;
+  // 🔮 Счётчик печатей, пока легенда не завершена
+  if (questState.legend_seals && !questState.legend_face.done)
+    html += `<li class="seals">🔮 Печати силы: ${Math.min(questState.legend_seals.count, 6)}/6</li>`;
+
+  // 📋 Активные задания (не больше 8 — остальные подождут)
+  const MAX_ACTIVE = 8;
+  const shown = active.filter(q => q !== star).slice(0, MAX_ACTIVE);
+  html += shown.map(q => `<li>⬜ ${q.text}${prog(q)}</li>`).join('');
+  const hiddenAct = active.length - (star ? 1 : 0) - shown.length;
+  if (hiddenAct > 0) html += `<li class="more">…ещё ${hiddenAct} заданий впереди</li>`;
+
+  // ✅ Выполненные — внизу, бледные, только 3 последних
+  if (done.length) {
+    html += done.slice(-3).map(q => `<li class="done">✅ ${q.text}</li>`).join('');
+    if (done.length > 3) html += `<li class="more">✅ выполнено: ${done.length}</li>`;
+  }
+  list.innerHTML = html;
+
+  const doneAll = QUESTS.filter(q => questState[q.id].done).length;
   const title = document.getElementById('qTitle');
-  if (title) title.textContent = `📋 Задания ${done}/${QUESTS.length} ▾`;
+  if (title) title.textContent = `📋 Задания ${doneAll}/${QUESTS.length} ▾`;
 }
 
 // ============================================================
@@ -213,6 +274,7 @@ export function questProgress(id, n = 1) {
   st.count += n;
   if (st.count >= (q.need || 1)) {
     st.done = true;
+    emit('questDone', q.id);
     showToast('✅ Задание: ' + q.text);
     sfx.quest();
     emit('xp', 1);
@@ -252,6 +314,11 @@ export function initQuests() {
     if (type === 'diamondOre') questProgress('gold4');
     if (type === 'snow') questProgress('north3');
     if (type === 'coalOre') questProgress('under1');
+    if (type === 'crystal') questProgress('crystal_mine');
+    if (type === 'glowstone') questProgress('hogwarts3'); // 🏰 светокамень для зала
+    if (type === 'obsidian') questProgress('kaschey3'); // 💀 обсидиан для трона
+    if (type === 'mushroom') questProgress('yaga1');    // 🧹 грибы для зелья
+    if (type === 'flower') questProgress('yaga4');      // 🧹 цветы для отвара
   });
   
   on('blockPlaced', () => {
@@ -304,6 +371,7 @@ export function initQuests() {
     if (kind === 'slime') questProgress('slime_hunter');
     if (kind === 'zombie') questProgress('zombie_hunter');
     if (kind === 'bat') questProgress('bat_hunter');
+    if (kind === 'vampire') { questProgress('vampire_clear'); questProgress('vampire_hunter'); }
     if (kind === 'goblin_king') questProgress('kingKill');
     // 🏙️ Шаги городских цепочек на победы
     if (kind === 'orc') questProgress('steel1');
@@ -333,6 +401,11 @@ export function initQuests() {
     if (kind === 'necromancer') questProgress('ancient4');
     if (kind === 'ice_troll') questProgress('north4');
     if (kind === 'stone_golem') questProgress('under4');
+    if (kind === 'spider') questProgress('hogwarts1'); // 🏰 пауки Запретного леса
+    if (kind === 'ghost') questProgress('hogwarts4');  // 🏰 призраки башен
+    if (kind === 'skeleton') questProgress('kaschey1'); // 💀 стража Кащея
+    if (kind === 'ghost') questProgress('kaschey4');    // 💀 призраки темницы
+    if (kind === 'wolf') questProgress('yaga3');        // 🧹 волки у избушки
     // Проверка на всех боссов
     checkAllBosses();
   });
@@ -361,6 +434,14 @@ export function initQuests() {
     if (id === 'mountain_village') questProgress('find_mountain_village');
     if (id === 'fishing_village') questProgress('find_fishing_village');
     if (id === 'magic_village') questProgress('find_magic_village');
+    // 🗺️ Квестовые локации и небо
+    if (id === 'graveyard') questProgress('find_graveyard');
+    if (id === 'wolfden') questProgress('find_wolfden');
+    if (id === 'ruins') questProgress('find_ruins');
+    if (id === 'orccamp') questProgress('find_orccamp');
+    if (id === 'darkaltar') questProgress('find_darkaltar');
+    if (id === 'sky_island') questProgress('sky_island_visit');
+    if (id === 'cloud_city') questProgress('cloud_city_visit');
     // 🏙️ Большие города
     if (id === 'city_steel')   { questProgress('citySteel'); questProgress('cityAll'); }
     if (id === 'city_gold')    { questProgress('cityGold'); questProgress('cityAll'); }
@@ -381,9 +462,15 @@ export function initQuests() {
   
   on('dungeon', () => { questProgress('dungeon'); questProgress('ancient3'); });
 
+  // ✨ Артефакты
+  on('artifact', () => { questProgress('arti_first'); questProgress('arti_5'); });
+
   // 👑 Разговор с мэром города: двигает «речевые» шаги цепочки
   // (шаг 2 — донести весть, шаг 5 — вернуться за наградой)
+  on('lairCleared', () => questProgress('lairHunter')); // ⚔️ логова монстров
+
   on('cityTalk', city => {
+    if (city === 'kaschey') questProgress('legend_face'); // 💀 печати предъявлены!
     questProgress(city + '2');
     questProgress(city + '5');
   });
