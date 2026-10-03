@@ -20,7 +20,7 @@ import { heal } from './health.js';
 import { CONFIG } from './config.js';
 
 let G = null;
-let unicorn = null, fox = null, rabbit = null, slime = null, owl = null;
+let unicorn = null, fox = null, rabbit = null, slime = null, owl = null, castleRabbit = null;
 let hedgehog = null, spark = null;
 const fairies = []; // все существа для «луча зрения»
 
@@ -88,7 +88,7 @@ function wanderStep(c, dt, speed, range) {
 
 // Плавно встаём на землю (в незагруженных чанках — ждём)
 function followGround(c, dt) {
-  const gy = groundHeight(Math.floor(c.x), Math.floor(c.z));
+  const gy = groundHeight(Math.floor(c.x), Math.floor(c.z), 40);
   if (gy > 0) c.feet += (gy - c.feet) * Math.min(1, dt * 10);
   c.group.position.set(c.x, c.feet, c.z);
 }
@@ -332,6 +332,15 @@ export function initFairy(gameContext) {
     rollT: 0 // >0 — катимся клубочком после поглаживания!
   };
 
+  // 🏰 Кролик Хогвартса — школьный питомец, скачет по двору замка (250, 230)
+  const cparts = makeRabbit();
+  castleRabbit = {
+    ...cparts, kind: 'rabbit',
+    x: 250.5, z: 232.5, feet: 4, home: { x: 250, z: 232 },
+    tx: 250.5, tz: 232.5, wait: 0.5, phase: 0,
+    hopT: 0, joy: 0, scareT: 0, scareFrom: { x: 0, z: 0 }
+  };
+
   // ✨ Искорка — ночная фея, кружит над цветником Леи
   const kparts = makeSpark();
   spark = {
@@ -341,7 +350,7 @@ export function initFairy(gameContext) {
   };
 
   // Регистрируем всех: помечаем детали и добавляем на сцену
-  for (const f of [unicorn, fox, rabbit, slime, owl, hedgehog, spark]) {
+  for (const f of [unicorn, fox, rabbit, slime, owl, hedgehog, spark, castleRabbit]) {
     f.group.traverse(o => o.userData.fairy = f);
     G.scene.add(f.group);
     fairies.push(f);
@@ -498,6 +507,25 @@ export function updateFairy(dt) {
   }
   followGround(f, dt);
 
+  // 🏰 Кролик Хогвартса: скачет по двору замка
+  const cr = castleRabbit;
+  if (cr) {
+    const crFlee = fleeStep(cr, dt, 4.8);
+    const crHop = crFlee || wanderStep(cr, dt, 2.2, 8) || cr.joy > 0;
+    if (cr.joy > 0) cr.joy -= dt;
+    if (crHop) {
+      cr.hopT += dt * 7;
+      const hop2 = Math.abs(Math.sin(cr.hopT));
+      cr.group.position.set(cr.x, cr.feet + hop2 * (crFlee ? 0.5 : cr.joy > 0 ? 0.55 : 0.3), cr.z);
+      cr.group.rotation.x = -hop2 * 0.25;
+    } else {
+      cr.group.position.set(cr.x, cr.feet, cr.z);
+      cr.group.rotation.x *= 0.8;
+      cr.group.rotation.y += Math.sin(now / 900) * 0.002;
+    }
+    followGround(cr, dt);
+  }
+
   // 🐰 Зайчик: скачет дугой! А после поглаживания — прыгает от радости
   const r = rabbit;
   const rFlee = fleeStep(r, dt, 4.8); // от дракона — очень быстрые скачки!
@@ -516,7 +544,7 @@ export function updateFairy(dt) {
   }
   followGround(r, 0); // ноги уже посчитали выше — только высоту земли
   {
-    const gy = groundHeight(Math.floor(r.x), Math.floor(r.z));
+    const gy = groundHeight(Math.floor(r.x), Math.floor(r.z), 40);
     if (gy > 0) r.feet += (gy - r.feet) * Math.min(1, dt * 10);
   }
 
@@ -549,7 +577,7 @@ export function updateFairy(dt) {
     s2.group.position.set(s2.x, s2.feet + hop * 0.35, s2.z);
   }
   {
-    const gy = groundHeight(Math.floor(s2.x), Math.floor(s2.z));
+    const gy = groundHeight(Math.floor(s2.x), Math.floor(s2.z), 40);
     if (gy > 0) s2.feet += (gy - s2.feet) * Math.min(1, dt * 10);
   }
 
