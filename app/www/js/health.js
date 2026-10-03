@@ -12,18 +12,27 @@ import { showToast } from './ui.js';
 import { blockAt, groundHeight } from './world.js';
 import { FOUNTAIN, RESPAWN } from './village.js';
 import { spawnParticles } from './particles.js';
+import { skillRank } from './skills.js';
+import { hasArtifact, tryPhoenixSave } from './artifacts.js';
 
 let G = null;
-const MAX_HP = 10;              // 10 половинок = 5 сердечек
+const MAX_HP_BASE = 10;         // 10 половинок = 5 сердечек
+// Полный запас здоровья: навык «Живучесть» +1 сердце за ступень,
+// 💍 Кольцо жизни +2 сердца!
+export function maxHP() {
+  if (!G) return MAX_HP_BASE;
+  return MAX_HP_BASE + skillRank(G, 'vitality') * 2 + (hasArtifact(G, 'artiLifeRing') ? 4 : 0);
+}
 let lastDamage = -99;           // когда последний раз было больно (для отдыха)
 let airLeft = 4;                // запас воздуха под водой (секунды)
 let regenAcc = 0, warmAcc = 0, fountAcc = 0; // накопители лечения
 
 export function initHealth(gameContext) {
   G = gameContext;
-  if (typeof G.hp !== 'number') G.hp = MAX_HP;
+  if (typeof G.hp !== 'number') G.hp = maxHP();
   // Игрок приземлился? Проверяем, не больно ли было
   on('landed', vy => {
+    if (hasArtifact(G, 'artiCloudFeather')) return; // 🎐 Облачное перо: мягко всегда!
     if (vy > -14) return; // мягкое приземление
     const dmg = vy < -26 ? 6 : vy < -20 ? 4 : 2;
     damage(dmg, '😵 Ой, больно упал!');
@@ -34,6 +43,9 @@ export function initHealth(gameContext) {
 // Отнять здоровье (с вспышкой и звуком)
 export function damage(n, msg) {
   if (G.hp <= 0) return; // уже и так лежим
+  emit('hurt', n); // навык «Защита» учится на пережитых ударах
+  // 🪶 Перо феникса: смертельный удар? Выживаем с 1.5 сердца!
+  if (G.hp - n <= 0 && tryPhoenixSave(G)) { G.hp = 3; renderHearts(); return; }
   G.hp = Math.max(0, G.hp - n);
   lastDamage = performance.now() / 1000;
   renderHearts();
@@ -45,8 +57,8 @@ export function damage(n, msg) {
 
 // Полечить (яблоко, зелье, костёр)
 export function heal(n) {
-  if (G.hp >= MAX_HP) return false;
-  G.hp = Math.min(MAX_HP, G.hp + n);
+  if (G.hp >= maxHP()) return false;
+  G.hp = Math.min(maxHP(), G.hp + n);
   renderHearts();
   return true;
 }
@@ -54,7 +66,7 @@ export function heal(n) {
 // Съесть яблоко из рюкзака 🍎
 export function eatApple() {
   if ((G.inv.apple || 0) <= 0) { showToast('🍎 Яблок нет! Сорви с дерева (ломай листву)'); sfx.no(); return; }
-  if (G.hp >= MAX_HP) { showToast('😊 Я и так полон сил!'); return; }
+  if (G.hp >= maxHP()) { showToast('😊 Я и так полон сил!'); return; }
   G.inv.apple--;
   heal(4);
   showToast('🍎 Ням-ням! +2 ❤️');
@@ -67,35 +79,39 @@ export function eatApple() {
 // и возвращает его в деревню, целым и невредимым! 💫
 function respawn() {
   const p = G.player;
-  p.x = RESPAWN.x; p.z = RESPAWN.z;
-  p.feet = groundHeight(Math.floor(RESPAWN.x), Math.floor(RESPAWN.z)) + 0.5;
+  const pt = G.respawnPoint || RESPAWN; // 🛏️ кровать — свой дом, иначе фонтан
+  p.x = pt.x; p.z = pt.z;
+  p.feet = groundHeight(Math.floor(pt.x), Math.floor(pt.z), 40) + 0.5;
   p.vy = 0;
-  G.hp = MAX_HP;
+  G.hp = maxHP();
   renderHearts();
   // Волшебные брызги — живая вода встречает героя!
   for (let i = 0; i < 4; i++)
     spawnParticles(Math.floor(p.x), Math.floor(p.feet + 0.5 + i * 0.4), Math.floor(p.z), 'diamondOre');
   sfx.quest();
-  showToast('⛲ Живая вода подхватила тебя! Ты очнулся у фонтана, целый и невредимый 💫');
+  showToast(G.respawnPoint
+    ? '🛏️ Ты очнулся дома, целый и невредимый!'
+    : '⛲ Живая вода подхватила тебя! Ты очнулся у фонтана, целый и невредимый 💫');
 }
 
 // Каждый кадр: задыхаемся ли под водой? отдыхаем ли? греемся ли?
 export function updateHealth(dt) {
   const p = G.player;
   // Голова под водой? Воздух тает — пора всплывать!
-  const headUnder = blockAt(Math.floor(p.x), Math.floor(p.feet + 1.4), Math.floor(p.z)) === 'water';
+  const headUnder = blockAt(Math.floor(p.x), Math.floor(p.feet + 1.4), Math.floor(p.z)) === 'water'
+    && !hasArtifact(G, 'artiSeaPearl'); // 🫧 Жемчужина глубин: дышим под водой!
   if (headUnder && !p.fly) {
     airLeft -= dt;
     if (airLeft <= 0) { damage(1, '🫧 Хвать воздуха! Всплывай!'); airLeft = 2; }
   } else airLeft = 4;
 
   // Тихий отдых: если 6 секунд никто не обижал — сердечко растёт
-  if (G.hp > 0 && G.hp < MAX_HP && performance.now() / 1000 - lastDamage > 6) {
+  if (G.hp > 0 && G.hp < maxHP() && performance.now() / 1000 - lastDamage > 6) {
     regenAcc += dt;
     if (regenAcc >= 5) { regenAcc = 0; heal(1); }
   }
   // У костра ночью греемся быстрее (костёр сам «поглаживает»)
-  if (G.warmByFire && G.hp < MAX_HP) {
+  if (G.warmByFire && G.hp < maxHP()) {
     warmAcc += dt;
     if (warmAcc >= 2.5) { warmAcc = 0; heal(1); }
   }
@@ -109,7 +125,7 @@ export function updateHealth(dt) {
       spawnParticles(Math.floor(FOUNTAIN.x), Math.floor(FOUNTAIN.y + 1),
         Math.floor(FOUNTAIN.z), 'diamondOre');
     }
-    if (G.hp < MAX_HP) {
+    if (G.hp < maxHP()) {
       warmAcc += dt; // у фонтана лечимся вдвое быстрее
       if (warmAcc >= 3) { warmAcc = 0; heal(1); }
     }
@@ -128,7 +144,7 @@ export function renderHearts() {
   const el = document.getElementById('hearts');
   if (!el) return;
   let s = '';
-  for (let i = 0; i < MAX_HP / 2; i++) {
+  for (let i = 0; i < maxHP() / 2; i++) {
     const left = G.hp - i * 2;
     s += left >= 2 ? '❤️' : left === 1 ? '💔' : '🖤';
   }
@@ -136,7 +152,7 @@ export function renderHearts() {
   // Трясём, когда больно!
   el.classList.remove('shake');
   void el.offsetWidth; // перезапуск анимации
-  if (G.hp < MAX_HP) el.classList.add('shake');
+  if (G.hp < maxHP()) el.classList.add('shake');
 }
 
 // Значки действующих зелий рядом с сердечками

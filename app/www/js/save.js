@@ -6,12 +6,13 @@
 //  Из этого мир восстанавливается один в один!
 // ============================================================
 
-import { CONFIG } from './config.js';
+import { CONFIG, PLACEABLE } from './config.js';
 import { on } from './bus.js';
 import { getDeltas, setDeltas, setSeed } from './world.js';
 import { getTorches, addTorch } from './torches.js';
 import { getFires, addFire } from './campfire.js';
 import { questState } from './quests.js';
+import { getActivePortals, setActivePortals } from './portals.js';
 
 let G = null;
 let dirty = false; // флаг «есть несохранённые изменения»
@@ -38,7 +39,11 @@ export function saveWorld() {
     time: G.time.t,
     xp: G.xp, level: G.level, // ⭐ прогресс героя
     gear: G.equip,            // ⚔️ надетое снаряжение (меч/лук + броня)
-    skills: G.skills, sp: G.sp, // 📚 навыки и очки навыков
+    skills: G.skills, sp: G.sp, skillXP: G.skillXP, // 📚 навыки и очки навыков
+    slots: PLACEABLE.slice(), // 🧱 раскладка блоков в слотах
+    respawn: G.respawnPoint || null, // 🛏️ дом (кровать)
+    portals: getActivePortals(),    // 🔵 активированные порталы
+    home: G.homeInv || {},           // 📦 домашний склад
     // Карман: бесконечность (∞) не умеет в JSON — кодируем как -1
     inv: Object.fromEntries(Object.entries(G.inv).map(([k, v]) => [k, v === Infinity ? -1 : v]))
   };
@@ -69,7 +74,14 @@ export function loadSave() {
     if (data.gear) G.equip = { weapon: data.gear.weapon || null, armor: data.gear.armor || null };
     // 📚 Навыки и очки навыков
     if (data.skills) Object.assign(G.skills, data.skills);
+    if (data.skillXP) G.skillXP = data.skillXP;
     if (typeof data.sp === 'number') G.sp = data.sp;
+    // 🧱 Восстанавливаем раскладку слотов
+    if (data.slots && data.slots.length === 10)
+      data.slots.forEach((t, i) => PLACEABLE[i] = t);
+    if (data.respawn) G.respawnPoint = data.respawn; // 🛏️
+    if (data.home) G.homeInv = data.home;            // 📦
+    if (data.portals) setActivePortals(data.portals); // 🔵
     return true;
   } catch (e) { return false; } // сохранение битое — начнём заново
 }

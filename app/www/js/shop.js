@@ -25,6 +25,8 @@ export const SHOP_ITEMS = [
   { icon: '🔥', give: 'matches', n: 3, cost: { coalOre: 1 }, desc: 'Чтобы разводить костёр' },
   { icon: '🧱', give: 'brick',  n: 5, cost: { goldOre: 1 }, desc: 'Красивые кирпичи для дома' },
   { icon: '🪟', give: 'glass',  n: 4, cost: { goldOre: 1 }, desc: 'Стёклышки для окон' },
+  { icon: '🛏️', give: 'bed',    n: 1, cost: { goldOre: 2 }, desc: 'Дом! Примени — очнёшься тут' },
+  { icon: '📦', give: 'chest',  n: 1, cost: { goldOre: 1 }, desc: 'Поставь дома — склад вещей' },
   // ⚔️ Оружейная полка: мечи от простого к легендарному!
   { icon: '🗡️', give: 'swordWood',    n: 1, cost: { coalOre: 2 }, desc: 'Первый меч героя. Урон 2' },
   { icon: '⚔️', give: 'swordStone',   n: 1, cost: { goldOre: 2 }, desc: 'Крепкий каменный. Урон 3' },
