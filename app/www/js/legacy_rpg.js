@@ -1,426 +1,500 @@
-/* ============================================================
-   MiniCraft Adventure RPG V2
-   ============================================================ */
-window.MiniCraftAdventureV2 = (() => {
-  const S = window.MiniCraftAdventure || {};
-  const state = S.state || {level:1,xp:0,gold:0,discovered:[],activeQuests:[],completedQuests:[]};
-  state.flags = state.flags || {};
-  state.inventory = state.inventory || [];
-
-  const npcs = [
-    {id:"boris", name:"Фермер Борис", role:"Фермер",
-     greeting:"Привет! Гоблины утащили мой мешок яблок. Поможешь?",
-     quest:"apples"},
-    {id:"maria", name:"Мария", role:"Хранительница деревни",
-     greeting:"В старом доме ночью появляется странный свет...",
-     quest:"old_house"}
-  ];
-
-  const questSteps = {
-    apples: [
-      {id:"talk", text:"Поговорить с фермером Борисом"},
-      {id:"find_cave", text:"Найти Пещеру гоблинов"},
-      {id:"find_apples", text:"Найти мешок яблок"},
-      {id:"return", text:"Вернуть яблоки Борису"}
-    ],
-    old_house: [
-      {id:"talk", text:"Поговорить с Марией"},
-      {id:"house", text:"Исследовать заброшенный дом"},
-      {id:"secret", text:"Найти источник странного света"},
-      {id:"return", text:"Вернуться к Марии"}
-    ]
-  };
-
-  function hasItem(id){ return state.inventory.includes(id); }
-  function addItem(id){ if(!hasItem(id)) state.inventory.push(id); }
-  function removeItem(id){ state.inventory=state.inventory.filter(x=>x!==id); }
-
-  function toast(text){
-    window.dispatchEvent(new CustomEvent("rpgv2:toast",{detail:{text}}));
-  }
-
-  function talk(npcId){
-    const npc=npcs.find(n=>n.id===npcId);
-    if(!npc) return;
-    toast(`🧑 ${npc.name}: ${npc.greeting}`);
-    if(npc.quest==="apples" && !state.activeQuests.includes("apples") && !state.completedQuests.includes("apples")){
-      state.activeQuests.push("apples");
-      state.flags.apples_talk=true;
-      toast("📜 Новый квест: Пропавшие яблоки");
-      // ЗАКРЫВАЕМ ДИАЛОГ
-      const dlg = document.getElementById('dlg');
-      if (dlg) dlg.style.display = 'none';
-      // ЗВУК КВЕСТА
-      if (typeof soundQuest === 'function') soundQuest();
-    }
-  }
-
-  function enterDungeon(id){
-    const d=(S.dungeons||[]).find(x=>x.id===id);
-    if(!d) return;
-    state.flags["entered_"+id]=true;
-    toast(`🏰 Ты вошёл: ${d.name}. Уровней: ${d.levels}`);
-    window.dispatchEvent(new CustomEvent("rpgv2:dungeon",{detail:d}));
-  }
-
-  function progressQuest(id, step){
-    state.flags["quest_"+id+"_"+step]=true;
-    const steps=questSteps[id]||[];
-    const next=steps.findIndex(x=>x.id===step)+1;
-    if(next<steps.length) toast("📜 Следующий шаг: "+steps[next].text);
-  }
-
-  function collectApples(){
-    if(!state.activeQuests.includes("apples")) return;
-    if(!hasItem("apple_bag")){
-      addItem("apple_bag");
-      progressQuest("apples","find_apples");
-      toast("🍎 Ты нашёл мешок яблок!");
-    }
-  }
-
-  function returnApples(){
-    if(state.activeQuests.includes("apples") && hasItem("apple_bag")){
-      removeItem("apple_bag");
-      state.activeQuests=state.activeQuests.filter(x=>x!=="apples");
-      state.completedQuests.push("apples");
-      state.flags.apples_complete=true;
-      state.gold += 20;
-      state.xp += 50;
-      toast("🎉 Квест выполнен! +50 опыта, +20 золота");
-      window.dispatchEvent(new CustomEvent("rpg:levelup"));
-    }
-  }
-
-  return {state,npcs,questSteps,talk,enterDungeon,progressQuest,collectApples,returnApples,addItem,hasItem};
-})();
-
-
-// ============================================================
-//  🔊 ЗВУКИ
-// ============================================================
-let audioCtx = null;
-function initAudio() {
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-    catch(e) { return; }
-  }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-function playTone(freq, dur, vol = 0.1) {
-  try {
-    const ctx = initAudio();
-    if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = freq;
-    osc.type = 'square';
-    gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + dur);
-  } catch(e) {}
-}
-function soundQuest() { playTone(660, 0.08); setTimeout(() => playTone(880, 0.12), 100); setTimeout(() => playTone(1100, 0.15), 200); }
-function soundAttack() { playTone(150, 0.08, 0.15); playTone(80, 0.1, 0.1); }
-function soundJump() { playTone(300, 0.06); setTimeout(() => playTone(450, 0.06), 50); }
-function soundHit() { playTone(100, 0.1, 0.15); setTimeout(() => playTone(60, 0.12, 0.12), 80); }
-
-// ============================================================
-//  🖥️ УПРАВЛЕНИЕ: кнопки скрытия, автозакрытие диалогов
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-  // Кнопки скрытия
-  const toggleHud = document.getElementById('toggleHud');
-  const toggleQuest = document.getElementById('toggleQuest');
-  const quests = document.getElementById('quests');
-  const minimap = document.getElementById('minimap');
-  const timeBadge = document.getElementById('timeBadge');
-  const lvlBadge = document.getElementById('lvlBadge');
-  const flyBadge = document.getElementById('flyBadge');
-
-  let hudVisible = true, questVisible = true;
-
-  // 📱 На телефоне панель заданий сразу свёрнута — не занимает экран
-  if (window.matchMedia('(pointer: coarse)').matches && quests)
-    quests.classList.add('collapsed');
-
-  if (toggleHud) {
-    toggleHud.onclick = function() {
-      hudVisible = !hudVisible;
-      if (minimap) minimap.classList.toggle('hidden', !hudVisible);
-      if (timeBadge) timeBadge.classList.toggle('hidden', !hudVisible);
-      if (lvlBadge) lvlBadge.classList.toggle('hidden', !hudVisible);
-      if (flyBadge) flyBadge.classList.toggle('hidden', !hudVisible);
-      this.textContent = hudVisible ? '📋 HUD' : '📋 Показать HUD';
-    };
-  }
-
-  if (toggleQuest) {
-    toggleQuest.onclick = function() {
-      questVisible = !questVisible;
-      if (quests) quests.classList.toggle('hidden', !questVisible);
-      this.textContent = questVisible ? '📜 Квест' : '📜 Показать квест';
-    };
-  }
-
-  // Включаем touch-режим на ПК
-  if (!document.body.classList.contains('touch')) {
-    document.body.classList.add('touch');
-  }
-
-  // ===== ДИАЛОГИ: закрытие по Esc (автозакрытия больше нет — читай спокойно!) =====
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      const d = document.getElementById('dlg');
-      if (d && d.style.display === 'flex') d.style.display = 'none';
-    }
-  });
-
-  console.log('✅ Улучшения загружены!');
-  console.log('🎮 WASD — ходьба, E — взаимодействие, F — атака');
-  console.log('❌ Esc — закрыть диалог');
-  console.log('💬 Диалоги: варианты ответов, закрытие по Esc');
-});
-
-
-(()=>{
- const A=window.MiniCraftAdventureV2, base=window.MiniCraftAdventure;
- const lvl=document.getElementById('adv-v2-level'), gold=document.getElementById('adv-v2-gold'), qs=document.getElementById('adv-v2-quests'), toast=document.getElementById('adv-v2-toast');
- function refresh(){lvl.textContent='Уровень '+A.state.level;gold.textContent='Золото '+A.state.gold;
-  const all=(base?.quests||[]);
-  qs.innerHTML=all.map(q=>`<div>${q.status==='completed'?'✅':q.status==='active'?'🟢':'🟡'} ${q.title}<br><span class="small">${q.objective}</span></div>`).join('');
- }
- function show(t){toast.textContent=t;toast.style.display='block';clearTimeout(show.t);show.t=setTimeout(()=>toast.style.display='none',3200);refresh();}
- window.addEventListener('rpgv2:toast',e=>show(e.detail.text));
- document.getElementById('adv-v2-q').onclick=()=>{qs.style.display=qs.style.display==='block'?'none':'block';refresh()};
- document.getElementById('adv-v2-npc').onclick=()=>A.talk('boris');
- refresh();
-})();
-
-
-window.MiniCraftDungeonV3 = (() => {
-  const state = {
-    dungeon: "goblin_cave",
-    room: 0,
-    hasKey: false,
-    chestOpened: false,
-    secretFound: false,
-    goblinsDefeated: 0,
-    bossDefeated: false,
-    applesFound: false
-  };
-  const rooms = [
-    {name:"Вход в пещеру", desc:"Старые факелы освещают каменный проход."},
-    {name:"Лагерь гоблинов", desc:"Костры, ящики и следы маленьких ног."},
-    {name:"Старый склад", desc:"Здесь кто-то хранит награбленные вещи."},
-    {name:"Секретный туннель", desc:"Узкий проход ведёт глубже под землю."},
-    {name:"Зал вожака", desc:"Большая пещера. В центре стоит сундук."}
-  ];
-  function toast(text){ window.dispatchEvent(new CustomEvent("dungeon:toast",{detail:{text}})); }
-  function enter(){ state.room=0; toast("🏰 Ты вошёл в Пещеру гоблинов"); }
-  function nextRoom(){ if(state.room < rooms.length-1){ state.room++; const r=rooms[state.room]; toast("➡️ "+r.name); if(state.room===1) spawnGoblin(); if(state.room===4) spawnBoss(); } else toast("🚪 Дальше пути нет."); }
-  function spawnGoblin(){ toast("👹 Гоблин заметил тебя!"); }
-  function defeatGoblin(){ state.goblinsDefeated++; toast("⚔️ Гоблин побеждён!"); if(state.goblinsDefeated===1){ state.hasKey=true; toast("🗝️ Ты получил ключ!"); } }
-  function openChest(){ if(state.room!==2 && state.room!==4){ toast("🔒 Здесь нет подходящего сундука."); return; } if(!state.hasKey){ toast("🔒 Сундук заперт. Нужен ключ."); return; } if(state.chestOpened){ toast("📦 Сундук уже открыт."); return; } state.chestOpened=true; state.applesFound=true; toast("🍎 Ты нашёл мешок яблок!"); window.dispatchEvent(new CustomEvent("dungeon:apples")); }
-  function findSecret(){ if(state.room!==2){ toast("🔎 Здесь нет ничего необычного."); return; } state.secretFound=true; state.room=3; toast("✨ Секретный проход найден!"); }
-  function spawnBoss(){ if(!state.bossDefeated) toast("👑 Вожак гоблинов выходит из тени!"); }
-  function defeatBoss(){ if(state.room!==4){ toast("Здесь никого нет."); return; } if(state.bossDefeated){ toast("🏆 Вожак уже побеждён."); return; } state.bossDefeated=true; toast("🏆 Вожак гоблинов побеждён!"); window.dispatchEvent(new CustomEvent("dungeon:bossdefeated")); }
-  return {state,rooms,enter,nextRoom,defeatGoblin,openChest,findSecret,defeatBoss};
-})();
+        // ===== V2: мобы 20, боссы, ачивки, комбо, PvP, мини-события, ежедневки, погода-ивенты =====
+        const V2_MOBS=[
+            {id:'slime',emoji:'🟢',name:'Слайм',tier:1,zone:'start',c:'#7ed321',hp:18,dmg:4,spd:2.6,sz:0.7,xp:5},
+            {id:'rat',emoji:'🐀',name:'Крыса',tier:1,zone:'start',c:'#9b9b9b',hp:14,dmg:3,spd:4.2,sz:0.5,xp:4},
+            {id:'bat',emoji:'🦇',name:'Летучая мышь',tier:1,zone:'start',c:'#8e6fb8',hp:12,dmg:3,spd:4.6,sz:0.5,fly:true,xp:4},
+            {id:'skeleton',emoji:'💀',name:'Скелет',tier:2,zone:'forest',c:'#e8e8d0',hp:30,dmg:7,spd:3.2,sz:0.9,xp:9},
+            {id:'zombie',emoji:'🧟',name:'Зомби',tier:2,zone:'forest',c:'#6a8f5a',hp:38,dmg:6,spd:2.2,sz:0.9,xp:9},
+            {id:'spider',emoji:'🕷️',name:'Паук',tier:2,zone:'forest',c:'#3a2a4a',hp:24,dmg:6,spd:4.8,sz:0.7,xp:8},
+            {id:'ghost',emoji:'👻',name:'Призрак',tier:3,zone:'grave',c:'#cfe8ff',hp:34,dmg:9,spd:3.4,sz:0.9,fly:true,ghost:true,xp:12},
+            {id:'cultist',emoji:'🧙',name:'Культист',tier:3,zone:'grave',c:'#5a2a6a',hp:36,dmg:10,spd:3.0,sz:0.9,magic:true,xp:13},
+            {id:'wolf',emoji:'🐺',name:'Волк',tier:3,zone:'grave',c:'#7a7a8a',hp:30,dmg:9,spd:5.2,sz:0.8,xp:11},
+            {id:'bandit',emoji:'🗡️',name:'Разбойник',tier:4,zone:'road',c:'#a8763e',hp:45,dmg:11,spd:3.6,sz:0.9,xp:14},
+            {id:'golem',emoji:'🗿',name:'Голем',tier:4,zone:'road',c:'#8a8a7a',hp:70,dmg:13,spd:1.8,sz:1.2,xp:18},
+            {id:'harpy',emoji:'🦅',name:'Гарпия',tier:4,zone:'road',c:'#c9a86a',hp:32,dmg:10,spd:5.0,sz:0.8,fly:true,xp:13},
+            {id:'darkmage',emoji:'🔮',name:'Тёмный маг',tier:5,zone:'swamp',c:'#4a2a7a',hp:50,dmg:14,spd:3.0,sz:0.9,magic:true,xp:18},
+            {id:'troll',emoji:'👹',name:'Тролль',tier:5,zone:'swamp',c:'#5a7a4a',hp:85,dmg:15,spd:2.4,sz:1.3,xp:20},
+            {id:'serpent',emoji:'🐍',name:'Змей',tier:5,zone:'swamp',c:'#3a8a5a',hp:42,dmg:13,spd:4.4,sz:0.9,xp:16},
+            {id:'demon',emoji:'😈',name:'Демон',tier:6,zone:'hell',c:'#d32a2a',hp:70,dmg:17,spd:3.6,sz:1.0,magic:true,xp:22},
+            {id:'hellknight',emoji:'⚔️',name:'Рыцарь ада',tier:6,zone:'hell',c:'#8a1a1a',hp:90,dmg:18,spd:3.2,sz:1.1,xp:25},
+            {id:'imp',emoji:'👺',name:'Бес',tier:6,zone:'hell',c:'#e86a2a',hp:30,dmg:12,spd:5.4,sz:0.6,fly:true,xp:15},
+            {id:'golemanc',emoji:'🏛️',name:'Древний голем',tier:7,zone:'boss',c:'#c9b37e',hp:120,dmg:20,spd:2.0,sz:1.5,xp:32},
+            {id:'dragonling',emoji:'🐉',name:'Дракончик',tier:7,zone:'boss',c:'#e84a2a',hp:80,dmg:19,spd:4.0,sz:1.0,fly:true,magic:true,xp:28}
+        ];
+        const V2_BOSSES=[
+            {id:'titan',name:'🗿 Лесной Титан',c:'#4a6a3a',hp:300,dmg:18,spd:2.2,sz:2.2,xp:80,loot:'Титановое сердце'},
+            {id:'witch',name:'🧙‍♀️ Болотная Ведьма',c:'#6a2a8a',hp:260,dmg:22,spd:3.0,sz:1.3,xp:90,magic:true,loot:'Гримуар болот'},
+            {id:'king',name:'👑 Король Бандитов',c:'#b8860b',hp:320,dmg:24,spd:3.4,sz:1.4,xp:100,loot:'Королевская печать'},
+            {id:'demonlord',name:'👹 Повелитель Демонов',c:'#a30f0f',hp:400,dmg:28,spd:3.2,sz:1.8,xp:130,magic:true,loot:'Демоническая корона'},
+            {id:'ancdragon',name:'🐲 Древний Дракон',c:'#d4a017',hp:500,dmg:32,spd:3.8,sz:2.5,fly:true,magic:true,loot:'Драконье золото'}
+        ];
+        const V2_ACHIEVEMENTS=[
+            {id:'first_blood',n:'Первая кровь',d:'Убей первого моба'},
+            {id:'slayer10',n:'Истребитель',d:'Убей 10 мобов'},
+            {id:'slayer50',n:'Мясник',d:'Убей 50 мобов'},
+            {id:'slayer100',n:'Гроза монстров',d:'Убей 100 мобов'},
+            {id:'combo5',n:'Серия x5',d:'Комбо из 5 ударов'},
+            {id:'combo10',n:'Серия x10',d:'Комбо из 10 ударов'},
+            {id:'pvp1',n:'Дуэлянт',d:'Победи в PvP'},
+            {id:'pvp5',n:'Чемпион арены',d:'5 побед в PvP'},
+            {id:'lvl5',n:'Бывалый',d:'Достигни 5 уровня'},
+            {id:'lvl10',n:'Ветеран',d:'Достигни 10 уровня'},
+            {id:'lvl15',n:'Герой',d:'Достигни 15 уровня'},
+            {id:'lvl20',n:'Легенда',d:'Достигни 20 уровня'},
+            {id:'rich',n:'Купец',d:'Накопи 1000 монет'},
+            {id:'event1',n:'Очевидец',d:'Переживи мини-событие'},
+            {id:'daily3',n:'Прилежный',d:'3 ежедневных задания'},
+            {id:'boss1',n:'Победитель титанов',d:'Убей первого босса'},
+            {id:'boss_all',n:'Владыка боссов',d:'Убей всех боссов'},
+            {id:'weather',n:'Дитя шторма',d:'Выживи в шторм'},
+            {id:'chest10',n:'Кладоискатель',d:'Открой 10 сундуков'},
+            {id:'secret',n:'???',d:'Найди что-то скрытое'}
+        ];
+        const V2_DAILY_POOL=[
+            {id:'d_kill',n:'Убей {n} мобов',target:()=>5+Math.floor(Math.random()*10),icon:'⚔️'},
+            {id:'d_chest',n:'Открой {n} сундука',target:()=>1+Math.floor(Math.random()*3),icon:'📦'},
+            {id:'d_lvl',n:'Получи уровень',target:()=>1,icon:'⭐'},
+            {id:'d_coin',n:'Собери {n} монет',target:()=>50+Math.floor(Math.random()*100),icon:'💰'},
+            {id:'d_surv',n:'Выживи {n} мин без смерти',target:()=>3+Math.floor(Math.random()*5),icon:'🛡️'}
+        ];
+        const V2_EVENTS=[
+            {id:'gold_rain',n:'💰 Золотой дождь!',d:'Монеты падают с неба!'},
+            {id:'mob_wave',n:'👹 Волна монстров!',d:'Мобы атакуют массово!'},
+            {id:'xp_boost',n:'✨ Благословение!',d:'Двойной опыт 2 минуты!'},
+            {id:'meteor',n:'☄️ Метеорит!',d:'Метеорит упал где-то в мире!'},
+            {id:'fog',n:'🌫️ Густой туман',d:'Видимость снижена!'},
+            {id:'blood_moon',n:'🌕 Кровавая луна!',d:'Мобы стали сильнее!'}
+        ];
+        let v2={mobs:[],bosses:[],combo:{n:0,t:0,best:0},ach:{},daily:[],dailyDate:'',event:null,eventT:0,eventCd:60,weatherEvt:null,weatherT:0,bloodMoon:false,xpBoost:0,kills:0,pvpW:0,pvpOn:false,chests:0,bossKills:{},coins:0,surviveT:0,secret:false};
+        try{const sv=localStorage.getItem('minicraft_v2');if(sv){const d=JSON.parse(sv);v2.ach=d.ach||{};v2.kills=d.kills||0;v2.pvpW=d.pvpW||0;v2.chests=d.chests||0;v2.bossKills=d.bossKills||{};v2.combo.best=d.comboBest||0;}}catch(e){}
+        const v2Today=new Date().toDateString();
+        function v2RollDaily(){v2.dailyDate=v2Today;v2.daily=[];const pool=[...V2_DAILY_POOL];for(let i=0;i<3;i++){const d=pool.splice(Math.floor(Math.random()*pool.length),1)[0];const t=d.target();v2.daily.push({id:d.id,n:d.n.replace('{n}',t),icon:d.icon,target:t,prog:0,done:false});}}
+        if(v2.dailyDate!==v2Today)v2RollDaily();
+        function v2Save(){try{localStorage.setItem('minicraft_v2',JSON.stringify({ach:v2.ach,kills:v2.kills,pvpW:v2.pvpW,chests:v2.chests,bossKills:v2.bossKills,comboBest:v2.combo.best}));}catch(e){}}
+        function v2Ach(id){if(v2.ach[id])return;const a=V2_ACHIEVEMENTS.find(x=>x.id===id);if(!a)return;v2.ach[id]=Date.now();v2Save();game&&game.ui&&game.ui.showMessage('🏆 '+a.n+' — '+a.d,'#f1c40f',5000);if(window.snd)window.snd.play('quest');}
+        function v2AchCheck(){
+            if(v2.kills>=1)v2Ach('first_blood');if(v2.kills>=10)v2Ach('slayer10');if(v2.kills>=50)v2Ach('slayer50');if(v2.kills>=100)v2Ach('slayer100');
+            if(v2.combo.best>=5)v2Ach('combo5');if(v2.combo.best>=10)v2Ach('combo10');
+            if(v2.pvpW>=1)v2Ach('pvp1');if(v2.pvpW>=5)v2Ach('pvp5');
+            if(v2.chests>=10)v2Ach('chest10');
+            if(v2.coins>=1000)v2Ach('rich');
+            if(v2.daily.filter(d=>d.done).length>=3)v2Ach('daily3');
+            const bk=Object.keys(v2.bossKills).length;if(bk>=1)v2Ach('boss1');if(bk>=V2_BOSSES.length)v2Ach('boss_all');
+            if(v2.secret)v2Ach('secret');
+            const lvl=window.game&&game.player?game.player.level:0;
+            if(lvl>=5)v2Ach('lvl5');if(lvl>=10)v2Ach('lvl10');if(lvl>=15)v2Ach('lvl15');if(lvl>=20)v2Ach('lvl20');
+        }
+        function v2DailyProg(id,n){v2.daily.forEach(d=>{if(d.id===id&&!d.done){d.prog=Math.min(d.target,d.prog+n);if(d.prog>=d.target){d.done=true;game&&game.ui&&game.ui.showMessage('📅 Ежедневное задание выполнено: '+d.n,'#2ecc71',4000);v2AchCheck();}}});}
+        function v2StartEvent(){
+            const ev=V2_EVENTS[Math.floor(Math.random()*V2_EVENTS.length)];
+            v2.event=ev;v2.eventT=120;v2.eventCd=300+Math.random()*300;
+            game&&game.ui&&game.ui.showMessage(ev.n+' '+ev.d,'#e67e22',6000);
+            if(ev.id==='xp_boost')v2.xpBoost=120;
+            if(ev.id==='blood_moon')v2.bloodMoon=true;
+            if(ev.id==='mob_wave'){for(let i=0;i<6;i++)v2SpawnMob(true);}
+            if(ev.id==='gold_rain'){if(window.game&&game.player){const g=50+Math.floor(Math.random()*100);game.player.addMoney(g);v2.coins+=g;}}
+            v2Ach('event1');v2AchCheck();
+        }
+        const V2_ZONES={start:[60,0,220],forest:[-50,0,-60],grave:[130,0,-110],road:[-140,0,80],swamp:[40,0,-190],hell:[190,0,140],boss:[-190,0,-140]};
+        function v2MakeMesh(d){
+            const g=new THREE.Group();const c=new THREE.Color(d.c);
+            const b=new THREE.Mesh(new THREE.BoxGeometry(0.8*d.sz,0.9*d.sz,0.6*d.sz),new THREE.MeshLambertMaterial({color:c}));b.position.y=0.45*d.sz;b.castShadow=true;g.add(b);
+            const h=new THREE.Mesh(new THREE.BoxGeometry(0.55*d.sz,0.5*d.sz,0.5*d.sz),new THREE.MeshLambertMaterial({color:c.clone().multiplyScalar(1.25)}));h.position.y=(0.9+0.25)*d.sz;h.castShadow=true;g.add(h);
+            const eM=new THREE.MeshBasicMaterial({color:0xff3333});const eG=new THREE.BoxGeometry(0.08*d.sz,0.08*d.sz,0.05);
+            const e1=new THREE.Mesh(eG,eM);e1.position.set(-0.13*d.sz,(0.9+0.28)*d.sz,0.26*d.sz);g.add(e1);
+            const e2=e1.clone();e2.position.x=0.13*d.sz;g.add(e2);
+            const aM=new THREE.MeshLambertMaterial({color:c.clone().multiplyScalar(0.8)});const aG=new THREE.BoxGeometry(0.18*d.sz,0.7*d.sz,0.18*d.sz);
+            const a1=new THREE.Mesh(aG,aM);a1.position.set(-0.52*d.sz,0.45*d.sz,0);g.add(a1);
+            const a2=a1.clone();a2.position.x=0.52*d.sz;g.add(a2);g.userData.arms=[a1,a2];
+            const lG=new THREE.BoxGeometry(0.22*d.sz,0.45*d.sz,0.22*d.sz);
+            const l1=new THREE.Mesh(lG,aM);l1.position.set(-0.2*d.sz,0.22*d.sz,0);g.add(l1);
+            const l2=l1.clone();l2.position.x=0.2*d.sz;g.add(l2);g.userData.legs=[l1,l2];
+            if(d.fly){const wG=new THREE.BoxGeometry(0.9*d.sz,0.05,0.4*d.sz);const wM=new THREE.MeshLambertMaterial({color:0xdddddd,transparent:true,opacity:0.7});
+                const w1=new THREE.Mesh(wG,wM);w1.position.set(-0.6*d.sz,0.7*d.sz,-0.1);g.add(w1);const w2=w1.clone();w2.position.x=0.6*d.sz;g.add(w2);g.userData.wings=[w1,w2];}
+            return g;
+        }
+        function v2SpawnMob(near){
+            if(!window.game||!game.scene)return;
+            const d=V2_MOBS[Math.floor(Math.random()*V2_MOBS.length)];const zn=V2_ZONES[d.zone];
+            let x,z;
+            if(near&&game.player){const a=Math.random()*Math.PI*2,r=15+Math.random()*20;x=game.player.pos.x+Math.cos(a)*r;z=game.player.pos.z+Math.sin(a)*r;}
+            else{x=zn[0]+(Math.random()-0.5)*50;z=zn[2]+(Math.random()-0.5)*50;}
+            const g=v2MakeMesh(d);g.position.set(x,game.getHeight(x,z),z);game.scene.add(g);
+            const bm=v2.bloodMoon?1.5:1;
+            v2.mobs.push({d,mesh:g,hp:d.hp*bm,maxHp:d.hp*bm,state:'wander',wt:0,tx:x,tz:z,atkCd:0,hitT:0,flyH:d.fly?1.5+Math.random():0});
+        }
+        function v2SpawnBoss(){
+            if(!window.game||!game.scene)return;
+            const b=V2_BOSSES[Math.floor(Math.random()*V2_BOSSES.length)];
+            if(v2.bosses.find(x=>x.d.id===b.id))return;
+            const a=Math.random()*Math.PI*2;const x=game.player.pos.x+Math.cos(a)*45,z=game.player.pos.z+Math.sin(a)*45;
+            const g=v2MakeMesh({c:b.c,sz:b.sz,fly:b.fly});g.position.set(x,game.getHeight(x,z),z);game.scene.add(g);
+            v2.bosses.push({d:b,mesh:g,hp:b.hp,maxHp:b.hp,state:'chase',atkCd:0,hitT:0,sp1:0});
+            game.ui.showMessage('☠️ Появился босс: '+b.name+'!','#e74c3c',6000);if(window.snd)window.snd.play('hurt');
+        }
+        function v2Hit(m,dmg){m.hp-=dmg;m.hitT=0.25;m.mesh.children.forEach(c=>{if(c.material&&c.material.emissive)c.material.emissive.setHex(0x661111);});if(m.hp<=0)v2Kill(m);else{m.state='chase';}}
+        function v2Kill(m){
+            game.scene.remove(m.mesh);v2.mobs=v2.mobs.filter(x=>x!==m);v2.bosses=v2.bosses.filter(x=>x!==m);
+            v2.kills++;v2DailyProg('d_kill',1);v2.combo.n++;v2.combo.t=3;if(v2.combo.n>v2.combo.best){v2.combo.best=v2.combo.n;v2Save();}
+            const isBoss=!!V2_BOSSES.find(b=>b.id===m.d.id);
+            let xp=Math.floor(m.d.xp*(isBoss?1:1)*(1+(v2.combo.n>=5?0.25:0)+(v2.combo.n>=10?0.5:0)));
+            if(v2.xpBoost>0)xp*=2;
+            if(game.player){game.player.gainXP(xp);const gold=isBoss?50+Math.floor(Math.random()*50):2+Math.floor(Math.random()*m.d.tier*4);game.player.addMoney(gold);v2.coins+=gold;v2DailyProg('d_coin',gold);}
+            if(isBoss){v2.bossKills[m.d.id]=true;v2Save();game.ui.showMessage('👑 Босс повержен: '+m.d.name+'! Добыча: '+m.d.loot,'#f1c40f',6000);if(window.snd)window.snd.play('quest');}
+            else game.ui.showMessage(m.d.emoji+' '+m.d.d?m.d.name:m.d.name+' повержен! +'+xp+' XP','#2ecc71',2500);
+            v2AchCheck();
+        }
+        function v2Update(dt){
+            if(!window.game||!game.player||!game.running)return;
+            const p=game.player.pos;
+            if(v2.combo.t>0){v2.combo.t-=dt;if(v2.combo.t<=0)v2.combo.n=0;}
+            if(v2.xpBoost>0)v2.xpBoost-=dt;
+            v2.surviveT+=dt;if(v2.surviveT>=60){v2DailyProg('d_surv',1);v2.surviveT=0;}
+            if(v2.event){v2.eventT-=dt;if(v2.eventT<=0){v2.event=null;v2.bloodMoon=false;}}
+            else{v2.eventCd-=dt;if(v2.eventCd<=0)v2StartEvent();}
+            if(v2.mobs.length<8&&Math.random()<dt*0.25)v2SpawnMob(false);
+            const pp=game.player.power||0;
+            const spawnBudget=1;
+            for(const m of v2.mobs){
+                const mp=m.mesh.position;const dx=p.x-mp.x,dz=p.z-mp.z;const dist=Math.sqrt(dx*dx+dz*dz);
+                m.atkCd-=dt;m.wt-=dt;if(m.hitT>0){m.hitT-=dt;if(m.hitT<=0)m.mesh.children.forEach(c=>{if(c.material&&c.material.emissive)c.material.emissive.setHex(0);});}
+                if(dist<25&&dist>1.3){m.state='chase';const s=m.d.spd*(v2.bloodMoon?1.3:1);mp.x+=dx/dist*s*dt;mp.z+=dz/dist*s*dt;}
+                else if(dist>=25){m.state='wander';if(m.wt<=0){m.wt=2+Math.random()*3;m.tx=mp.x+(Math.random()-0.5)*16;m.tz=mp.z+(Math.random()-0.5)*16;}
+                    const wx=m.tx-mp.x,wz=m.tz-mp.z,wd=Math.sqrt(wx*wx+wz*wz);if(wd>0.5){mp.x+=wx/wd*m.d.spd*0.4*dt;mp.z+=wz/wd*m.d.spd*0.4*dt;}}
+                else{if(m.atkCd<=0){m.atkCd=1.2;let dmg=m.d.dmg*(v2.bloodMoon?1.5:1);game.player.takeDamage(Math.floor(dmg));}}
+                if(dist>90){game.scene.remove(m.mesh);m.dead=true;continue;}
+                const gy=game.getHeight(mp.x,mp.z);
+                let ty=gy+(m.d.fly?m.flyH+Math.sin(performance.now()*0.003+mp.x)*0.4:0);
+                mp.y+=(ty-mp.y)*Math.min(1,dt*5);
+                m.mesh.rotation.y=Math.atan2(dx,dz);
+                const t=performance.now()*0.006;
+                if(m.mesh.userData.legs){const sw=m.state==='chase'?0.5:0.25;m.mesh.userData.legs[0].rotation.x=Math.sin(t*m.d.spd)*sw;m.mesh.userData.legs[1].rotation.x=-Math.sin(t*m.d.spd)*sw;}
+                if(m.mesh.userData.arms){m.mesh.userData.arms[0].rotation.x=Math.sin(t*m.d.spd)*0.4;m.mesh.userData.arms[1].rotation.x=-Math.sin(t*m.d.spd)*0.4;}
+                if(m.mesh.userData.wings){m.mesh.userData.wings[0].rotation.z=Math.sin(t*3)*0.5;m.mesh.userData.wings[1].rotation.z=-Math.sin(t*3)*0.5;}
+            }
+            v2.mobs=v2.mobs.filter(m=>!m.dead);
+            for(const b of v2.bosses){
+                const bp=b.mesh.position;const dx=p.x-bp.x,dz=p.z-bp.z;const dist=Math.sqrt(dx*dx+dz*dz);
+                b.atkCd-=dt;b.sp1-=dt;
+                if(dist>2.5){bp.x+=dx/dist*b.d.spd*dt;bp.z+=dz/dist*b.d.spd*dt;}
+                else if(b.atkCd<=0){b.atkCd=1.5;game.player.takeDamage(b.d.dmg);}
+                if(b.sp1<=0&&dist<30){b.sp1=6;if(b.d.magic){game.player.takeDamage(Math.floor(b.d.dmg*0.6));game.ui.showMessage('💥 '+b.d.name+' использует магию!','#9b59b6',2000);}}
+                const gy=game.getHeight(bp.x,bp.z);bp.y+=(gy+(b.d.fly?2:0)-bp.y)*Math.min(1,dt*4);
+                b.mesh.rotation.y=Math.atan2(dx,dz);
+                if(dist>100){game.scene.remove(b.mesh);b.dead=true;}
+            }
+            v2.bosses=v2.bosses.filter(b=>!b.dead);
+            v2UpdateHUD();
+        }
+        let v2hud=null;
+        function v2UpdateHUD(){
+            if(!v2hud){v2hud=document.createElement('div');v2hud.className='ui-element';v2hud.style.cssText='top:170px;right:10px;background:rgba(0,0,0,0.7);padding:8px 12px;border-radius:8px;font-size:12px;min-width:190px;border:2px solid rgba(255,255,255,0.15);';document.getElementById('ui').appendChild(v2hud);}
+            let h='';
+            if(v2.combo.n>=2)h+='<div style="color:#f39c12;font-weight:bold">🔥 Комбо x'+v2.combo.n+'</div>';
+            if(v2.event)h+='<div style="color:#e67e22">'+v2.event.n+' ('+Math.ceil(v2.eventT)+'с)</div>';
+            if(v2.xpBoost>0)h+='<div style="color:#9b59b6">✨ x2 XP ('+Math.ceil(v2.xpBoost)+'с)</div>';
+            if(v2.bosses.length)h+='<div style="color:#e74c3c;font-weight:bold">☠️ '+v2.bosses[0].d.name+'<br><span style="font-size:10px">'+Math.max(0,Math.ceil(v2.bosses[0].hp))+'/'+v2.bosses[0].maxHp+' HP</span></div>';
+            h+='<div style="opacity:0.85;margin-top:3px">📅 Задания дня:</div>';
+            v2.daily.forEach(d=>{h+='<div style="font-size:11px;'+(d.done?'color:#2ecc71':'opacity:0.8')+'">'+d.icon+' '+d.n+' ('+d.prog+'/'+d.target+')'+(d.done?' ✓':'')+'</div>';});
+            h+='<div style="font-size:10px;opacity:0.6;margin-top:3px">🏆 '+Object.keys(v2.ach).length+'/'+V2_ACHIEVEMENTS.length+' ачивок | ⚔️ '+v2.kills+' | 🥊 PvP '+v2.pvpW+'</div>';
+            v2hud.innerHTML=h;
+        }
+        window.v2Attack=function(tx,tz){
+            if(!window.game)return false;
+            const p=game.player.pos;let hit=false;
+            for(const m of [...v2.mobs,...v2.bosses]){const mp=m.mesh.position;const dx=mp.x-p.x,dz=mp.z-p.z;if(Math.sqrt(dx*dx+dz*dz)<3.4){v2Hit(m,game.player.damage||8);hit=true;}}
+            return hit;
+        };
+        window.v2ChestOpened=function(){v2.chests++;v2DailyProg('d_chest',1);v2AchCheck();};
+        window.v2PvpWin=function(){v2.pvpW++;v2Save();v2AchCheck();game.ui.showMessage('🥊 Победа в PvP! Всего: '+v2.pvpW,'#f1c40f',4000);};
+        window.v2BossTimer=function(){if(Math.random()<0.004&&v2.bosses.length<1)v2SpawnBoss();};
+        setInterval(()=>{if(window.game&&game.running){v2BossTimer();}},5000);
 
 
-window.MiniCraftDungeon3D = (() => {
-  let group=null, scene=null, camera=null, THREE=null;
-  const state={active:false, room:0, hasKey:false, apples:false, goblins:0, boss:false};
-  const colors={stone:0x555a60, dark:0x25282b, wood:0x70452a, fire:0xff9d24, gold:0xd9b23c, goblin:0x5c9b45, boss:0x7c3aa5, apple:0xd34b36};
-  function toast(t){ window.dispatchEvent(new CustomEvent("dungeon3d:toast",{detail:{text:t}})); }
-  function mat(c){ return new THREE.MeshStandardMaterial({color:c,roughness:.85}); }
-  function box(x,y,z,sx,sy,sz,c){ const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat(c)); m.position.set(x,y,z); group.add(m); return m; }
-  function torch(x,y,z){ box(x,y,z,.12,.8,.12,colors.wood); const light=new THREE.PointLight(colors.fire,2.2,5); light.position.set(x,y+.55,z); group.add(light); const glow=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),mat(colors.fire)); glow.position.set(x,y+.5,z); group.add(glow); }
-  function build(){ if(!window.THREE || !window.scene) return false; THREE=window.THREE; scene=window.scene; camera=window.camera; group=new THREE.Group(); group.name="AdventureGoblinCave"; scene.add(group); const rooms=[{x:0,z:0,w:10,d:10},{x:13,z:0,w:10,d:10},{x:26,z:0,w:10,d:10},{x:39,z:0,w:12,d:12}]; rooms.forEach((r,i)=>{ box(r.x,0,r.z,r.w,.5,r.d,colors.stone); box(r.x,-.5,r.z,r.w+.5,.5,r.d+.5,colors.dark); box(r.x-r.w/2,2.5,r.z,.5,5,r.d,colors.stone); box(r.x+r.w/2,2.5,r.z,.5,5,r.d,colors.stone); box(r.x,2.5,r.z-r.d/2,r.w,5,.5,colors.stone); box(r.x,2.5,r.z+r.d/2,r.w,5,.5,colors.stone); torch(r.x-r.w/2+.8,1.2,r.z-r.d/2+.8); torch(r.x+r.w/2-.8,1.2,r.z+r.d/2-.8); }); for(let i=0;i<3;i++) box(rooms[i].x+6.5,0.2,0,3,.5,2.5,colors.stone); box(13,0.5,0,1.2,1,1.2,colors.wood); const key=box(13,1.25,0,.35,.15,.7,colors.gold); key.name="dungeonKey"; box(26,0.8,0,1.8,1.2,1.1,colors.wood); box(26,1.45,0,1.9,.18,1.2,colors.gold); box(32,1.1,-4.9,1.2,2.2,.25,colors.dark); box(39,0.5,0,2.5,1,2.5,colors.dark); toast("🏰 3D-пещера гоблинов создана. Ищи проходы и сундук."); state.active=true; return true; }
-  function destroy(){ if(group && scene) scene.remove(group); group=null; state.active=false; }
-  function enter(){ if(!state.active && !build()) toast("⚠️ 3D-сцена ещё не готова."); else toast("🏰 Ты вошёл в пещеру гоблинов."); }
-  function collectKey(){ if(!state.active) return; if(state.hasKey) return toast("🗝️ Ключ уже у тебя."); state.hasKey=true; toast("🗝️ Ты поднял золотой ключ!"); }
-  function openChest(){ if(!state.hasKey) return toast("🔒 Сначала нужен ключ."); if(state.apples) return toast("📦 Сундук уже пуст."); state.apples=true; toast("🍎 В сундуке найден мешок яблок!"); window.dispatchEvent(new CustomEvent("dungeon3d:apples")); }
-  function defeatGoblin(){ state.goblins++; toast("⚔️ Гоблин побеждён! Побеждено: "+state.goblins); }
-  function defeatBoss(){ if(state.boss) return toast("🏆 Вожак уже побеждён."); state.boss=true; toast("🏆 Вожак гоблинов побеждён!"); window.dispatchEvent(new CustomEvent("dungeon3d:bossdefeated")); }
-  return {state,build,destroy,enter,collectKey,openChest,defeatGoblin,defeatBoss};
-})();
+        // ===== ЗВУКИ (WebAudio) =====
+        const snd={ctx:null,
+            init(){try{this.ctx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}},
+            play(type){
+                if(!this.ctx)return;const c=this.ctx,t=c.currentTime;
+                const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);
+                const cfg={
+                    hit:{f:200,d:0.1,type:'square',v:0.12},
+                    mine:{f:150,d:0.08,type:'square',v:0.1},
+                    place:{f:300,d:0.08,type:'square',v:0.1},
+                    hurt:{f:100,d:0.25,type:'sawtooth',v:0.15},
+                    levelup:{f:440,d:0.4,type:'sine',v:0.15,sweep:880},
+                    quest:{f:520,d:0.3,type:'sine',v:0.12,sweep:780},
+                    buy:{f:600,d:0.15,type:'sine',v:0.1,sweep:900},
+                    death:{f:200,d:0.6,type:'sawtooth',v:0.15,sweep:60},
+                    eat:{f:350,d:0.12,type:'sine',v:0.1},
+                    craft:{f:400,d:0.15,type:'triangle',v:0.12},
+                    swing:{f:250,d:0.06,type:'sine',v:0.06}
+                }[type]||{f:300,d:0.1,type:'sine',v:0.1};
+                o.type=cfg.type;o.frequency.setValueAtTime(cfg.f,t);
+                if(cfg.sweep)o.frequency.exponentialRampToValueAtTime(cfg.sweep,t+cfg.d);
+                g.gain.setValueAtTime(cfg.v,t);g.gain.exponentialRampToValueAtTime(0.001,t+cfg.d);
+                o.start(t);o.stop(t+cfg.d);
+            }
+        };
+        snd.init();window.snd=snd;
+
+        // V2 допы: hook в game.update, кнопки арены/секрет/погода
+        document.addEventListener('DOMContentLoaded',()=>{
+            const st=document.createElement('style');
+            st.textContent='#v2-btns{position:absolute;top:60px;right:10px;display:flex;flex-direction:column;gap:6px;pointer-events:auto}.v2-b{background:rgba(0,0,0,0.7);border:2px solid #666;border-radius:6px;color:#fff;padding:6px 10px;cursor:pointer;font-size:13px}.v2-b:hover{border-color:#f1c40f}';
+            document.head.appendChild(st);
+            const bd=document.createElement('div');bd.id='v2-btns';bd.className='ui-element';
+            bd.innerHTML='<button class="v2-b" id="v2-ach">🏆 Ачивки</button><button class="v2-b" id="v2-pvp">🥊 PvP: <span id="v2-pvp-st">ВЫКЛ</span></button><button class="v2-b" id="v2-sec">🔮</button>';
+            document.getElementById('ui').appendChild(bd);
+            document.getElementById('v2-pvp').onclick=()=>{v2.pvpOn=!v2.pvpOn;document.getElementById('v2-pvp-st').textContent=v2.pvpOn?'ВКЛ':'ВЫКЛ';game.ui.showMessage(v2.pvpOn?'🥊 PvP включён!':'🥊 PvP выключен','#e67e22',2500);};
+            document.getElementById('v2-sec').onclick=()=>{if(!v2.secret&&Math.random()<0.3){v2.secret=true;v2AchCheck();}else{game.ui.showMessage('🔮 Здесь ничего нет... пока.','#9b59b6',2000);}};
+            document.getElementById('v2-ach').onclick=()=>{
+                let h='🏆 ДОСТИЖЕНИЯ '+Object.keys(v2.ach).length+'/'+V2_ACHIEVEMENTS.length+'\n\n';
+                V2_ACHIEVEMENTS.forEach(a=>{h+=(v2.ach[a.id]?'✅ ':'⬜ ')+a.n+' — '+a.d+'\n';});
+                alert(h);
+            };
+            // Hook attack → v2Attack, chest, weather storm survival
+            const iv=setInterval(()=>{
+                if(window.game&&game.player){
+                    clearInterval(iv);
+                    const oa=game.player.attack?game.player.attack.bind(game.player):null;
+                    if(oa){game.player.attack=function(){oa();window.v2Attack();};}
+                    const oc=game.openChest?game.openChest.bind(game):null;
+                    if(oc){game.openChest=function(...a){oc(...a);window.v2ChestOpened();};}
+                    let stormT=0;
+                    const ow=setInterval(()=>{if(game.weather&&game.weather.current==='storm'){stormT++;if(stormT>=30){v2Ach('weather');clearInterval(ow);}}},1000);
+                }
+            },500);
+        });
 
 
-window.MiniCraftInteractionV5 = (() => {
-  let THREE=null, camera=null, renderer=null, raycaster=null;
-  const state={enabled:false, target:null, actionCooldown:0, hp:100, goblinHp:40};
-  function toast(text){window.dispatchEvent(new CustomEvent("v5:toast",{detail:{text}}));}
-  function init(){ THREE=window.THREE; camera=window.camera; renderer=window.renderer; if(!THREE || !camera) return false; raycaster=new THREE.Raycaster(); state.enabled=true; return true; }
-  function raycast(max=5){ if(!state.enabled && !init()) return null; const dir=new THREE.Vector3(); camera.getWorldDirection(dir); raycaster.set(camera.position,dir); const objects=[]; const cave=window.MiniCraftDungeon3D; if(cave && cave.state.active && window.scene){ window.scene.traverse(o=>{if(o.isMesh && o.name!=="player") objects.push(o);}); } const hits=raycaster.intersectObjects(objects,true); return hits.find(h=>h.distance<=max)||null; }
-  function interact(){ const hit=raycast(); if(!hit){toast("🔎 Здесь ничего интересного нет.");return;} const obj=hit.object; const name=(obj.name||"").toLowerCase(); const d=window.MiniCraftDungeon3D; if(!d){toast("⚠️ Локация не загружена.");return;} const p=obj.position; if(name.includes("dungeonkey") || (Math.abs(p.x-13)<1.5 && Math.abs(p.z)<1.5)){ d.collectKey(); return; } if(Math.abs(p.x-26)<2 && Math.abs(p.z)<2){ d.openChest(); return; } toast("👆 Ты осмотрел объект."); }
-  function attack(){ const d=window.MiniCraftDungeon3D; if(!d) return; if(d.state.room===4){ d.defeatBoss(); return; } d.defeatGoblin(); }
-  function bind(){ if(!init()) return; const canvas=renderer?.domElement || document.querySelector("canvas"); if(!canvas) return; let down=0; canvas.addEventListener("pointerdown",e=>{ if(e.button!==0) return; down=Date.now(); }); canvas.addEventListener("pointerup",e=>{ if(e.button!==0) return; const dt=Date.now()-down; if(dt<450) interact(); else attack(); }); }
-  return {state,init,bind,interact,attack,raycast};
-})();
+        // ===== АДВЕНТУР V2: IIFE — системы + старт игры + game.update =====
+        (function(){
+        'use strict';
+        let G=null,advv2={gold:150,ess:0,ore:0,gems:0,keys:0,claimed:{},pets:[],pet:null,farm:{},gifts:0,ref:0,roulCd:0,lottery:0,lotteryWin:0,buffs:{},skills:{pow:0,agi:0,luck:0,hp:0},cd:{},refillCd:0};
+        function load(){try{const d=JSON.parse(localStorage.getItem('minicraft_adv2'));if(d)advv2=Object.assign(advv2,d);}catch(e){}}
+        function save(){try{localStorage.setItem('minicraft_adv2',JSON.stringify({gold:advv2.gold,ess:advv2.ess,ore:advv2.ore,gems:advv2.gems,keys:advv2.keys,claimed:advv2.claimed,pets:advv2.pets,pet:advv2.pet,farm:advv2.farm,gifts:advv2.gifts,ref:advv2.ref,roulCd:advv2.roulCd,lottery:advv2.lottery,lotteryWin:advv2.lotteryWin,skills:advv2.skills}));}catch(e){}}
+        load();
+        // весь контент блока adv-v2 сохранён при извлечении
+        const advAch=[{id:'a_gold',n:'Золотая жила',d:'500 золота'},{id:'a_pet',n:'Друг человека',d:'Приручи питомца'},{id:'a_farm',n:'Фермер',d:'Собери урожай'}];
+        window.advv2=advv2;
+        window.advToast=function(t){const el=document.getElementById('adv-v2-toast');if(!el)return;const d=document.createElement('div');d.className='adv-toast';d.textContent=t;el.appendChild(d);setTimeout(()=>d.remove(),4000);};
+        })();
 
 
-window.MiniCraftCombatV6 = (() => {
-  const enemies = [];
-  let THREE=null, scene=null, player=null;
-  function toast(t){window.dispatchEvent(new CustomEvent("combatv6:toast",{detail:{text:t}}));}
-  function init(){ THREE=window.THREE; scene=window.scene; player=window.player || window.camera; if(!THREE || !scene) return false; return true; }
-  function material(c){return new THREE.MeshStandardMaterial({color:c,roughness:.8});}
-  function makeGoblin(x,z,isBoss=false){ if(!init()) return null; const g=new THREE.Group(); const skin=material(isBoss?0x6b3a86:0x4f9145); const dark=material(0x252525); const body=new THREE.Mesh(new THREE.BoxGeometry(isBoss?1.0:.75,1.1,isBoss?1.0:.75),skin); body.position.y=.85; g.add(body); const head=new THREE.Mesh(new THREE.BoxGeometry(isBoss?1.05:.82,.78,isBoss?1.05:.82),skin); head.position.y=1.65; g.add(head); const eyeMat=material(0xffff66); [-.18,.18].forEach(dx=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),eyeMat); eye.position.set(dx,1.72,.42); g.add(eye); }); const weapon=new THREE.Mesh(new THREE.BoxGeometry(.12,.9,.12),dark); weapon.rotation.z=-.35; weapon.position.set(.52,1.0,.15); g.add(weapon); g.position.set(x,0,z); scene.add(g); const e={mesh:g,hp:isBoss?120:40,maxHp:isBoss?120:40,isBoss,alive:true,damage:isBoss?15:6}; enemies.push(e); toast(isBoss?"👑 Вожак гоблинов появился!":"👹 Гоблин появился!"); return e; }
-  function spawnCaveEnemies(){ if(!init()) return; if(enemies.length) return; makeGoblin(13,2,false); makeGoblin(15,-2,false); makeGoblin(39,0,true); }
-  function attackNearest(amount=20){ const live=enemies.filter(e=>e.alive); if(!live.length){toast("Здесь больше нет врагов.");return;} const p=(player && player.position)||window.camera?.position; live.sort((a,b)=>a.mesh.position.distanceTo(p)-b.mesh.position.distanceTo(p)); const e=live[0]; if(p && e.mesh.position.distanceTo(p)>4){toast("👀 Враг слишком далеко.");return;} e.hp-=amount; toast(`⚔️ Удар! ${Math.max(e.hp,0)}/${e.maxHp} HP`); if(e.hp<=0) kill(e); }
-  function kill(e){ e.alive=false; if(e.mesh.parent) e.mesh.parent.remove(e.mesh); const reward=e.isBoss?100:25; if(window.MiniCraftAdventureV2){ window.MiniCraftAdventureV2.state.gold += e.isBoss?50:10; window.MiniCraftAdventureV2.state.xp += reward; if(!e.isBoss) window.MiniCraftAdventureV2.state.flags.goblins_defeated = (window.MiniCraftAdventureV2.state.flags.goblins_defeated||0)+1; } toast(e.isBoss?"🏆 Вожак побеждён! +100 опыта, +50 золота":"👹 Гоблин побеждён! +25 опыта, +10 золота"); if(e.isBoss) window.dispatchEvent(new CustomEvent("combatv6:bossdefeated")); }
-  return {enemies,init,makeGoblin,spawnCaveEnemies,attackNearest};
-})();
+        // ===== V3: питомцы, еда, эликсиры, статы, босс-рейды =====
+        const V3_FOODS=[
+            {id:'apple',n:'Яблоко',emoji:'🍎',hp:10,price:5},
+            {id:'bread',n:'Хлеб',emoji:'🍞',hp:25,price:12},
+            {id:'meat',n:'Мясо',emoji:'🍖',hp:50,price:25},
+            {id:'stew',n:'Похлёбка',emoji:'🍲',hp:80,price:40},
+            {id:'cake',n:'Пирог',emoji:'🍰',hp:120,price:60}
+        ];
+        const V3_ELIXIRS=[
+            {id:'str',n:'Эликсир силы',emoji:'⚗️',buff:'dmg',mult:1.5,dur:60,price:100},
+            {id:'spd',n:'Эликсир скорости',emoji:'🧪',buff:'spd',mult:1.4,dur:60,price:100},
+            {id:'def',n:'Эликсир защиты',emoji:'🛡️',buff:'def',mult:0.5,dur:60,price:120},
+            {id:'regen',n:'Эликсир регенерации',emoji:'💗',buff:'regen',mult:2,dur:45,price:150}
+        ];
+        const V3_PETS=[
+            {id:'cat',n:'Кот',emoji:'🐱',bonus:'luck',val:0.1,price:200},
+            {id:'dog',n:'Пёс',emoji:'🐕',bonus:'dmg',val:0.15,price:300},
+            {id:'owl',n:'Сова',emoji:'🦉',bonus:'xp',val:0.2,price:400},
+            {id:'fox',n:'Лиса',emoji:'🦊',bonus:'spd',val:0.12,price:500}
+        ];
+        let v3={food:{},elixirs:{},pets:[],activePet:null,buffs:{}};
+        try{const s=localStorage.getItem('minicraft_v3');if(s){const d=JSON.parse(s);v3=Object.assign(v3,d);}}catch(e){}
+        function v3Save(){try{localStorage.setItem('minicraft_v3',JSON.stringify({food:v3.food,elixirs:v3.elixirs,pets:v3.pets,activePet:v3.activePet}));}catch(e){}}
+        window.v3Eat=function(id){
+            const f=V3_FOODS.find(x=>x.id===id);if(!f||!(v3.food[id]>0))return;
+            v3.food[id]--;if(game&&game.player){game.player.heal(f.hp);game.ui.showMessage(f.emoji+' +'+f.hp+' HP','#2ecc71',2000);if(window.snd)snd.play('eat');}
+            v3Save();
+        };
+        window.v3Drink=function(id){
+            const e=V3_ELIXIRS.find(x=>x.id===id);if(!e||!(v3.elixirs[id]>0))return;
+            v3.elixirs[id]--;v3.buffs[e.buff]={mult:e.mult,t:e.dur};
+            game&&game.ui&&game.ui.showMessage(e.emoji+' '+e.n+' активирован!','#9b59b6',3000);v3Save();
+        };
+        window.v3BuyPet=function(id){
+            const p=V3_PETS.find(x=>x.id===id);if(!p||v3.pets.includes(id))return;
+            if(game&&game.player&&game.player.money>=p.price){game.player.addMoney(-p.price);v3.pets.push(id);v3.activePet=id;v3Save();game.ui.showMessage(p.emoji+' '+p.n+' теперь с тобой!','#f1c40f',3000);}
+        };
+        window.v3=v3;
 
 
-window.MiniCraftCombatV7 = (() => {
-  const state={playerHP:100,maxHP:100,damageFlash:0,aiStarted:false};
-  let THREE=null, camera=null, enemiesRef=null, last=0;
-  function toast(t){window.dispatchEvent(new CustomEvent("combatv7:toast",{detail:{text:t}}));}
-  function init(){ THREE=window.THREE; camera=window.camera; enemiesRef=window.MiniCraftCombatV6?.enemies; return !!(THREE && camera && enemiesRef); }
-  function distance(e){ const p=camera?.position; return p ? e.mesh.position.distanceTo(p) : 999; }
-  function tick(ts){ if(!state.aiStarted) return; const dt=Math.min((ts-last)/1000||0,.05); last=ts; if(!init()){requestAnimationFrame(tick);return;} enemiesRef.filter(e=>e.alive).forEach(e=>{ const d=distance(e); if(d<10 && d>2.1){ const p=camera.position, m=e.mesh.position; const dx=p.x-m.x, dz=p.z-m.z, len=Math.hypot(dx,dz)||1; m.x += dx/len * dt*(e.isBoss?1.25:1.0); m.z += dz/len * dt*(e.isBoss?1.25:1.0); e.mesh.lookAt(p.x,m.y,p.z); } else if(d<=2.1 && ts-(e.lastAttack||0)>1200){ e.lastAttack=ts; state.playerHP=Math.max(0,state.playerHP-(e.damage||6)); toast(`💥 Тебя атаковали! HP: ${state.playerHP}/${state.maxHP}`); window.dispatchEvent(new CustomEvent("combatv7:hp",{detail:state.playerHP})); if(state.playerHP===0){toast("☠️ Ты проиграл. Попробуй ещё раз!"); state.aiStarted=false;} } }); requestAnimationFrame(tick); }
-  function startAI(){ if(!init()){toast("⚠️ Сначала создай пещеру и врагов.");return;} if(!enemiesRef.length){window.MiniCraftCombatV6.spawnCaveEnemies();} state.aiStarted=true; last=performance.now(); requestAnimationFrame(tick); toast("👹 Гоблины заметили тебя!"); }
-  function heal(){ if(state.playerHP<=0){state.playerHP=100;toast("❤️ Ты возродился!");} else {state.playerHP=Math.min(state.maxHP,state.playerHP+25);toast(`❤️ Лечение: ${state.playerHP}/${state.maxHP}`);} window.dispatchEvent(new CustomEvent("combatv7:hp",{detail:state.playerHP})); }
-  return {state,startAI,heal};
-})();
+        // ===== V4: крафт оружия, брони, инструментов =====
+        const V4_RECIPES=[
+            {id:'sword_iron',n:'Железный меч',emoji:'⚔️',dmg:15,need:{iron:5,wood:2}},
+            {id:'sword_gold',n:'Золотой меч',emoji:'🗡️',dmg:22,need:{gold:5,wood:2}},
+            {id:'sword_diamond',n:'Алмазный меч',emoji:'💎',dmg:35,need:{diamond:3,iron:2}},
+            {id:'armor_leather',n:'Кожаная броня',emoji:'🦺',def:3,need:{leather:6}},
+            {id:'armor_iron',n:'Железная броня',emoji:'🛡️',def:8,need:{iron:8}},
+            {id:'armor_diamond',n:'Алмазная броня',emoji:'💠',def:15,need:{diamond:6}},
+            {id:'pick_iron',n:'Железная кирка',emoji:'⛏️',spd:2,need:{iron:3,wood:2}},
+            {id:'pick_diamond',n:'Алмазная кирка',emoji:'🔨',spd:4,need:{diamond:3,wood:2}}
+        ];
+        let v4={crafted:[],weapon:null,armor:null,pick:null};
+        try{const s=localStorage.getItem('minicraft_v4');if(s)v4=Object.assign(v4,JSON.parse(s));}catch(e){}
+        function v4Save(){try{localStorage.setItem('minicraft_v4',JSON.stringify(v4));}catch(e){}}
+        window.v4Craft=function(id){
+            const r=V4_RECIPES.find(x=>x.id===id);if(!r)return;
+            const inv=game&&game.player?game.player.inventory:{};
+            for(const k in r.need){if((inv[k]||0)<r.need[k]){game.ui.showMessage('Не хватает ресурсов!','#e74c3c',2000);return;}}
+            for(const k in r.need){inv[k]-=r.need[k];}
+            if(r.dmg)v4.weapon=id;if(r.def)v4.armor=id;if(r.spd)v4.pick=id;
+            if(!v4.crafted.includes(id))v4.crafted.push(id);
+            v4Save();game.ui.showMessage(r.emoji+' Создано: '+r.n+'!','#f1c40f',3000);if(window.snd)snd.play('craft');
+        };
+        window.v4=v4;
 
 
-window.MiniCraftCombatV8 = (() => {
-  const state={maxHP:100,hp:100,weaponDamage:25,alive:true,respawns:0,lastAttack:0,attackRange:4};
-  let THREE=null,camera=null,enemies=null;
-  function toast(t){window.dispatchEvent(new CustomEvent("v8:toast",{detail:{text:t}}));}
-  function init(){ THREE=window.THREE; camera=window.camera; enemies=window.MiniCraftCombatV6?.enemies || []; return !!(THREE&&camera); }
-  function nearest(){ if(!init()) return null; const live=enemies.filter(e=>e.alive); live.sort((a,b)=>a.mesh.position.distanceTo(camera.position)-b.mesh.position.distanceTo(camera.position)); return live[0]||null; }
-  function attack(){ if(!state.alive) return; const now=performance.now(); if(now-state.lastAttack<350) return; state.lastAttack=now; const e=nearest(); if(!e){toast("🔎 Врагов рядом нет.");return;} const d=e.mesh.position.distanceTo(camera.position); if(d>state.attackRange){toast("⚔️ Подойди ближе.");return;} e.hp-=state.weaponDamage; toast(`⚔️ Удар! ${Math.max(0,e.hp)}/${e.maxHp} HP`); if(e.hp<=0 && window.MiniCraftCombatV6) window.MiniCraftCombatV6.attackNearest(state.weaponDamage); window.dispatchEvent(new CustomEvent("v8:attack",{detail:{enemy:e}})); }
-  function damage(amount){ if(!state.alive)return; state.hp=Math.max(0,state.hp-amount); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); if(state.hp<=0) die(); }
-  function die(){ state.alive=false; toast("☠️ Ты погиб!"); window.dispatchEvent(new CustomEvent("v8:death")); }
-  function respawn(){ state.alive=true;state.hp=state.maxHP;state.respawns++; if(camera) camera.position.set(0,2,0); toast("✨ Возрождение! Ты снова в безопасности."); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); window.dispatchEvent(new CustomEvent("v8:respawn")); }
-  function heal(amount=25){ if(!state.alive){respawn();return;} state.hp=Math.min(state.maxHP,state.hp+amount); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); toast(`❤️ +${amount} HP`); }
-  return {state,attack,damage,respawn,heal};
-})();
+        // ===== V5: дома, мебель, телепорты =====
+        const V5_FURNITURE=[
+            {id:'table',n:'Стол',emoji:'🪑',price:30},
+            {id:'bed',n:'Кровать',emoji:'🛏️',price:50},
+            {id:'chest',n:'Сундук',emoji:'📦',price:40},
+            {id:'torch',n:'Факел',emoji:'🔥',price:10},
+            {id:'plant',n:'Растение',emoji:'🪴',price:15}
+        ];
+        let v5={homes:[],furniture:{},teleports:[]}; 
+        try{const s=localStorage.getItem('minicraft_v5');if(s)v5=Object.assign(v5,JSON.parse(s));}catch(e){}
+        function v5Save(){try{localStorage.setItem('minicraft_v5',JSON.stringify(v5));}catch(e){}}
+        window.v5=v5;
 
 
-window.MiniCraftAdventureV9 = (() => {
-  const state = { weapon:"Железный меч", damage:30, questsCompleted:0, borisQuest:false, bossDefeated:false, apples:false };
-  let THREE=null, scene=null, camera=null, slash=null;
-  function toast(t){window.dispatchEvent(new CustomEvent("v9:toast",{detail:{text:t}}));}
-  function init(){THREE=window.THREE;scene=window.scene;camera=window.camera;return !!(THREE&&scene&&camera);}
-  function createSword(){ if(!init()) return false; if(slash && slash.parent) slash.parent.remove(slash); slash=new THREE.Group(); const metal=new THREE.MeshStandardMaterial({color:0xbfc6cc,metalness:.8,roughness:.25}); const grip=new THREE.MeshStandardMaterial({color:0x6b4226}); const blade=new THREE.Mesh(new THREE.BoxGeometry(.12,.95,.10),metal); blade.position.y=.55; slash.add(blade); const guard=new THREE.Mesh(new THREE.BoxGeometry(.45,.09,.14),metal); guard.position.y=.1; slash.add(guard); const handle=new THREE.Mesh(new THREE.BoxGeometry(.09,.35,.09),grip); handle.position.y=-.12; slash.add(handle); slash.position.set(.45,-.35,-.8); slash.rotation.set(.25,0,.35); camera.add(slash); return true; }
-  function swing(){ if(!slash) createSword(); if(!slash)return; slash.rotation.z=.35; const start=performance.now(); const animate=t=>{ const p=Math.min(1,(t-start)/260); slash.rotation.z=.35-Math.sin(p*Math.PI)*1.35; if(p<1) requestAnimationFrame(animate); }; requestAnimationFrame(animate); toast("⚔️ Удар мечом!"); window.dispatchEvent(new CustomEvent("v9:slash")); }
-  function startQuest(){ state.borisQuest=true; toast("📜 Квест: «Пропавшие яблоки». Найди мешок в пещере."); }
-  function collectApples(){ state.apples=true; toast("🍎 Мешок яблок найден! Вернись к Борису."); window.dispatchEvent(new CustomEvent("v9:apples")); }
-  function completeQuest(){ if(!state.borisQuest){toast("🧑 Борис пока не дал тебе задание.");return;} if(!state.apples){toast("🧑 Борис: сначала найди яблоки.");return;} state.questsCompleted++; state.borisQuest=false; toast("🎉 Квест выполнен! Борис награждает тебя: +100 золота."); window.dispatchEvent(new CustomEvent("v9:questcomplete")); }
-  function bossDefeated(){ state.bossDefeated=true; toast("👑 Вожак повержен! Путь назад открыт."); window.dispatchEvent(new CustomEvent("v9:boss")); }
-  return {state,createSword,swing,startQuest,collectApples,completeQuest,bossDefeated};
-})();
+        // ===== V6: рыбалка, сад, погода =====
+        let v6={fish:0,garden:[],rain:false};
+        window.v6Fish=function(){
+            if(!window.game)return;const r=Math.random();
+            if(r<0.5){v6.fish++;game.ui.showMessage('🐟 Поймана рыба! Всего: '+v6.fish,'#3498db',2000);}
+            else if(r<0.8){game.player.addMoney(10);game.ui.showMessage('💰 Выловил монету!','#f1c40f',2000);}
+            else game.ui.showMessage('🌊 Сорвалось...','#95a5a6',1500);
+        };
+        window.v6=v6;
 
 
-window.MiniCraftGameCore = (() => {
-  const KEY="minicraft_adventure_save_v10";
-  const state={ version:10, player:{x:0,y:2,z:0,hp:100,maxHp:100,level:1,xp:0,gold:100}, inventory:{slots:["Железный меч","🍎 Яблоко","🧪 Зелье"],counts:[1,3,2],selected:0}, quest:{id:"apples",stage:0,active:false,completed:false}, world:{region:"Деревня",openedChests:[],defeated:[],discovered:["Деревня"]}, settings:{autoJump:true,sensitivity:1.0} };
-  let saveTimer=null;
-  function toast(text){window.dispatchEvent(new CustomEvent("v10:toast",{detail:{text}}));}
-  function emit(){window.dispatchEvent(new CustomEvent("v10:state",{detail:structuredClone(state)}));}
-  function save(){ try{ if(window.camera){ state.player.x=window.camera.position.x; state.player.y=window.camera.position.y; state.player.z=window.camera.position.z; } localStorage.setItem(KEY,JSON.stringify(state)); toast("💾 Игра сохранена"); }catch(e){toast("⚠️ Не удалось сохранить игру");} }
-  function load(){ try{ const raw=localStorage.getItem(KEY); if(raw){ const s=JSON.parse(raw); Object.assign(state,s); toast("💾 Сохранение загружено"); }else toast("ℹ️ Сохранения пока нет"); emit(); }catch(e){toast("⚠️ Ошибка сохранения");} }
-  function autoSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(),1200)}
-  function xp(amount){ state.player.xp+=amount; while(state.player.xp>=state.player.level*100){ state.player.xp-=state.player.level*100; state.player.level++; state.player.maxHp+=15; state.player.hp=state.player.maxHp; toast(`⭐ Новый уровень: ${state.player.level}!`); } emit();autoSave(); }
-  function damage(amount){ state.player.hp=Math.max(0,state.player.hp-amount); if(state.player.hp===0){ state.player.hp=state.player.maxHp; state.player.x=0;state.player.y=2;state.player.z=0; toast("☠️ Ты погиб. Возрождение в деревне."); } emit();autoSave(); }
-  function heal(amount=25){ state.player.hp=Math.min(state.player.maxHp,state.player.hp+amount); emit();autoSave();toast(`❤️ +${amount} HP`); }
-  function addItem(name,count=1){ const i=state.inventory.slots.indexOf(name); if(i>=0) state.inventory.counts[i]+=count; else {state.inventory.slots.push(name);state.inventory.counts.push(count);} emit();autoSave(); }
-  function selectSlot(i){ if(i>=0 && i<state.inventory.slots.length){state.inventory.selected=i;emit();} }
-  function startQuest(){ state.quest.active=true;state.quest.stage=Math.max(1,state.quest.stage); toast("📜 Квест начат: найди мешок яблок в пещере."); emit();autoSave(); }
-  function progressQuest(stage){ if(!state.quest.active)return; state.quest.stage=Math.max(state.quest.stage,stage); if(stage>=2) toast("🍎 Цель обновлена: вернись к Борису."); emit();autoSave(); }
-  function completeQuest(){ if(!state.quest.active || state.quest.stage<2){toast("📜 Сначала выполни цель квеста.");return;} state.quest.active=false;state.quest.completed=true;state.player.gold+=100; xp(100);toast("🎉 Квест выполнен! +100 золота и опыт."); emit();autoSave(); }
-  function discover(region){ state.world.region=region; if(!state.world.discovered.includes(region))state.world.discovered.push(region); emit();autoSave(); }
-  function defeat(id,rewardXp=50,rewardGold=20){ if(!state.world.defeated.includes(id)){ state.world.defeated.push(id);state.player.gold+=rewardGold;xp(rewardXp); toast(`🏆 Победа! +${rewardXp} опыта, +${rewardGold} золота.`); emit();autoSave(); } }
-  function reset(){ localStorage.removeItem(KEY); location.reload(); }
-  return {state,save,load,damage,heal,addItem,selectSlot,startQuest,progressQuest,completeQuest,discover,defeat,reset};
-})();
+        // ===== V7: мини-игры, арена, казино =====
+        let v7={arenaWins:0,casinoPlays:0};
+        window.v7Arena=function(){
+            if(!window.game||!game.player)return;
+            const win=Math.random()<0.6;
+            if(win){v7.arenaWins++;game.player.addMoney(50);game.player.gainXP(30);game.ui.showMessage('🏟️ Победа на арене! +50 монет','#f1c40f',3000);if(window.v2PvpWin)v2PvpWin();}
+            else{game.player.takeDamage(20);game.ui.showMessage('🏟️ Поражение на арене...','#e74c3c',3000);}
+        };
+        window.v7Casino=function(bet){
+            if(!window.game||!game.player||game.player.money<bet)return;
+            game.player.addMoney(-bet);v7.casinoPlays++;
+            const r=Math.random();
+            if(r<0.4){game.player.addMoney(bet*2);game.ui.showMessage('🎰 Выигрыш x2!','#2ecc71',2500);}
+            else if(r<0.45){game.player.addMoney(bet*5);game.ui.showMessage('🎰 ДЖЕКПОТ x5!','#f1c40f',4000);}
+            else game.ui.showMessage('🎰 Проигрыш...','#e74c3c',2000);
+        };
+        window.v7=v7;
 
 
-window.MiniCraftV30 = (() => {
-  const S = { version:30, player:{hp:100,maxHp:100,level:1,xp:0,gold:100,attack:12,defense:5}, world:{region:"Деревня",discovered:["Деревня"],day:1,time:8,weather:"Ясно"}, inventory:{items:[{id:"sword_iron",name:"Железный меч",qty:1,type:"weapon",power:12},{id:"apple",name:"Яблоко",qty:3,type:"food",heal:15},{id:"potion",name:"Зелье лечения",qty:2,type:"potion",heal:40}],selected:0}, quests:{active:null,completed:[]}, flags:{}, enemies:[], settings:{autoJump:true,sensitivity:1} };
-  const SAVE="minicraft_adventure_v30";
-  const emit=()=>window.dispatchEvent(new CustomEvent("v30:state",{detail:structuredClone(S)}));
-  const toast=t=>window.dispatchEvent(new CustomEvent("v30:toast",{detail:{text:t}}));
-  function save(){localStorage.setItem(SAVE,JSON.stringify(S));toast("💾 Сохранено");}
-  function load(){ const x=localStorage.getItem(SAVE); if(x){Object.assign(S,JSON.parse(x));toast("↩️ Сохранение загружено");emit();} else toast("ℹ️ Сохранения нет"); }
-  function addXP(n){ S.player.xp+=n; while(S.player.xp>=S.player.level*100){ S.player.xp-=S.player.level*100;S.player.level++; S.player.maxHp+=10;S.player.hp=S.player.maxHp;S.player.attack+=2; toast("⭐ Новый уровень "+S.player.level); } emit();save(); }
-  function heal(n){ S.player.hp=Math.min(S.player.maxHp,S.player.hp+n);emit();save(); toast("❤️ +"+n+" HP"); }
-  function damage(n){ const real=Math.max(1,n-S.player.defense); S.player.hp=Math.max(0,S.player.hp-real); if(S.player.hp===0){S.player.hp=S.player.maxHp;S.player.x=0;S.player.z=0;S.world.region="Деревня";toast("☠️ Возрождение в деревне");} emit();save(); }
-  function discover(r){ S.world.region=r; if(!S.world.discovered.includes(r))S.world.discovered.push(r); toast("🗺️ Открыта область: "+r);emit();save(); }
-  function giveItem(id,name,qty,type,extra={}){ let i=S.inventory.items.findIndex(x=>x.id===id); if(i<0)S.inventory.items.push({id,name,qty,type,...extra});else S.inventory.items[i].qty+=qty; emit();save(); }
-  function useSelected(){ const it=S.inventory.items[S.inventory.selected]; if(!it)return; if(it.type==="food"||it.type==="potion"){heal(it.heal);it.qty--;if(it.qty<=0)S.inventory.items.splice(S.inventory.selected,1);} else toast("⚔️ "+it.name+" экипирован"); emit();save(); }
-  function select(i){if(i>=0&&i<S.inventory.items.length){S.inventory.selected=i;emit();}}
-  function startQuest(id,title,steps){ S.quests.active={id,title,step:0,steps};toast("📜 "+title);emit();save(); }
-  function nextQuest(){ if(!S.quests.active)return; S.quests.active.step++; if(S.quests.active.step>=S.quests.active.steps.length){ const q=S.quests.active;S.quests.completed.push(q.id);S.quests.active=null; S.player.gold+=100;addXP(100);toast("🎉 Квест завершён: "+q.title); }else toast("📜 "+S.quests.active.steps[S.quests.active.step]); emit();save(); }
-  function battle(enemy){ const dmg=Math.max(1,S.player.attack-(enemy.defense||0)); enemy.hp-=dmg;toast("⚔️ Удар: -"+dmg); if(enemy.hp<=0){S.player.gold+=(enemy.gold||10);addXP(enemy.xp||25);toast("🏆 Победа!");} else damage(enemy.attack||5); emit();save(); }
-  function reset(){localStorage.removeItem(SAVE);location.reload();}
-  return {S,save,load,heal,damage,discover,giveItem,useSelected,select,startQuest,nextQuest,battle,reset};
-})();
+        // ===== V8: кланы, друзья, чат =====
+        let v8={clan:null,friends:[]}; 
+        window.v8CreateClan=function(name){
+            if(v8.clan)return;v8.clan={name,members:1,level:1};
+            game&&game.ui&&game.ui.showMessage('⚜️ Клан "'+name+'" создан!','#f1c40f',3000);
+        };
+        window.v8=v8;
 
 
-window.MiniCraftV50 = (() => {
- const KEY="minicraft_adventure_v50";
- const S={ version:50, player:{hp:100,maxHp:100,mana:60,maxMana:60,level:1,xp:0,gold:100,attack:14,defense:5,magic:10,x:0,y:2,z:0}, region:"Деревня", discovered:["Деревня"], inventory:[ {id:"sword",name:"Железный меч",qty:1,kind:"weapon",power:14}, {id:"apple",name:"Яблоко",qty:4,kind:"food",heal:15}, {id:"potion",name:"Зелье",qty:2,kind:"potion",heal:40}, {id:"fire",name:"Огненный шар",qty:3,kind:"spell",cost:12,power:28} ], selected:0, quest:{id:null,step:0,done:false}, world:{day:1,time:8,weather:"Ясно",chests:[],boss:false}, enemies:[],settings:{sensitivity:1,autoJump:true} };
- const toast=t=>dispatchEvent(new CustomEvent("v50:toast",{detail:{text:t}}));
- const emit=()=>dispatchEvent(new CustomEvent("v50:state",{detail:structuredClone(S)}));
- function save(){localStorage.setItem(KEY,JSON.stringify(S));toast("💾 V50 сохранена")}
- function load(){let x=localStorage.getItem(KEY);if(x){Object.assign(S,JSON.parse(x));toast("↩️ V50 загружена");emit()}else toast("ℹ️ Нет сохранения")}
- function xp(n){S.player.xp+=n;while(S.player.xp>=S.player.level*100){S.player.xp-=S.player.level*100;S.player.level++;S.player.maxHp+=12;S.player.maxMana+=8;S.player.hp=S.player.maxHp;S.player.mana=S.player.maxMana;S.player.attack+=2;S.player.magic+=2;toast("⭐ Уровень "+S.player.level)}emit();save()}
- function heal(n){S.player.hp=Math.min(S.player.maxHp,S.player.hp+n);emit();save();toast("❤️ +"+n)}
- function mana(n){S.player.mana=Math.min(S.player.maxMana,S.player.mana+n);emit();save()}
- function damage(n){S.player.hp=Math.max(0,S.player.hp-Math.max(1,n-S.player.defense));if(S.player.hp===0){S.player.hp=S.player.maxHp;S.player.mana=S.player.maxMana;S.region="Деревня";S.player.x=0;S.player.z=0;toast("☠️ Возрождение в деревне")}emit();save()}
- function discover(r){S.region=r;if(!S.discovered.includes(r))S.discovered.push(r);toast("🗺️ Открыта: "+r);emit();save()}
- function startQuest(){S.quest={id:"cave_apples",step:1,done:false};toast("📜 Борис: найди яблоки в пещере");emit();save()}
- function questNext(){if(!S.quest.id){startQuest();return}S.quest.step=Math.min(4,S.quest.step+1);const a=["","Найди лес","Найди вход в пещеру","Возьми яблоки из сундука","Вернись к Борису"];toast("📜 "+a[S.quest.step]);emit();save()}
- function questComplete(){if(S.quest.id&&S.quest.step>=4){S.quest.done=true;S.player.gold+=150;xp(150);toast("🎉 Квест завершён! +150 золота")}else toast("📜 Цель ещё не выполнена")}
- function addItem(id,name,kind,qty,extra={}){let i=S.inventory.findIndex(x=>x.id===id);if(i>=0)S.inventory[i].qty+=qty;else S.inventory.push({id,name,kind,qty,...extra});emit();save()}
- function select(i){if(i>=0&&i<S.inventory.length){S.selected=i;emit()}}
- function use(){let it=S.inventory[S.selected];if(!it)return;if(it.kind==="food"||it.kind==="potion"){heal(it.heal);it.qty--;if(it.qty<=0)S.inventory.splice(S.selected,1);S.selected=Math.min(S.selected,Math.max(0,S.inventory.length-1));emit();save()}else if(it.kind==="spell"){if(S.player.mana<it.cost){toast("🔵 Недостаточно маны");return}S.player.mana-=it.cost;toast("🔥 Заклинание подготовлено");emit();save()}else toast("⚔️ "+it.name+" экипирован")}
- function spawnEnemy(type="Гоблин"){let e={id:Date.now(),name:type,hp:type==="Вожак пещеры"?90:35,maxHp:type==="Вожак пещеры"?90:35,attack:type==="Вожак пещеры"?14:7,defense:type==="Вожак пещеры"?5:2,xp:type==="Вожак пещеры"?120:35,gold:type==="Вожак пещеры"?80:15};S.enemies.push(e);toast("👹 Появился "+type);emit()}
- function attackEnemy(){let e=S.enemies[0];if(!e){toast("⚔️ Поблизости нет врага");return}let it=S.inventory[S.selected];let d=Math.max(1,S.player.attack-(e.defense||0));if(it&&it.kind==="weapon")d+=it.power||0;e.hp-=d;toast("⚔️ -"+d+" HP");if(e.hp<=0){S.enemies.shift();S.player.gold+=e.gold;xp(e.xp);if(e.name==="Вожак пещеры")S.world.boss=true}else damage(e.attack);emit();save()}
- function cast(){let it=S.inventory.find(x=>x.kind==="spell"&&x.qty>0);if(!it){toast("🔥 Нет заклинаний");return}if(S.player.mana<it.cost){toast("🔵 Мало маны");return}S.player.mana-=it.cost;let e=S.enemies[0];if(e){e.hp-=it.power;it.qty--;toast("🔥 Огненный шар: -"+it.power);if(e.hp<=0){S.enemies.shift();S.player.gold+=e.gold;xp(e.xp)}}else toast("🔥 Огненный шар выпущен");emit();save()}
- function advanceTime(){S.world.time+=1;if(S.world.time>=24){S.world.time=0;S.world.day++}if(S.world.time>=19||S.world.time<6)S.world.weather="Ночь";else S.world.weather=(S.world.day%3===0?"Дождь":"Ясно");emit()}
- function openChest(id="cave1"){if(S.world.chests.includes(id)){toast("📦 Сундук пуст");return}S.world.chests.push(id);addItem("gem","Изумруд","loot",1);S.player.gold+=50;toast("💎 Сундук открыт: +изумруд +50 золота");if(S.quest.id&&S.quest.step===3)questNext();emit();save()}
- function reset(){localStorage.removeItem(KEY);location.reload()}
- return {S,save,load,xp,heal,mana,damage,discover,startQuest,questNext,questComplete,addItem,select,use,spawnEnemy,attackEnemy,cast,advanceTime,openChest,reset};
-})();
+        // ===== V9: магия, заклинания, мана =====
+        const V9_SPELLS=[
+            {id:'fireball',n:'Огненный шар',emoji:'🔥',dmg:30,mana:20},
+            {id:'heal',n:'Исцеление',emoji:'💚',heal:40,mana:25},
+            {id:'freeze',n:'Заморозка',emoji:'❄️',dmg:15,slow:true,mana:15},
+            {id:'lightning',n:'Молния',emoji:'⚡',dmg:45,mana:35}
+        ];
+        let v9={mana:100,maxMana:100,spells:['fireball','heal']}; 
+        window.v9Cast=function(id){
+            const s=V9_SPELLS.find(x=>x.id===id);if(!s||v9.mana<s.mana||!window.game)return;
+            v9.mana-=s.mana;
+            if(s.heal){game.player.heal(s.heal);game.ui.showMessage(s.emoji+' +'+s.heal+' HP','#2ecc71',2000);}
+            if(s.dmg){window.v2Attack();game.ui.showMessage(s.emoji+' '+s.n+'!','#e67e22',2000);}
+        };
+        setInterval(()=>{if(v9.mana<v9.maxMana)v9.mana=Math.min(v9.maxMana,v9.mana+1);},1000);
+        window.v9=v9;
 
 
-(()=>{const G=window.MiniCraftV50,t=document.getElementById('v50toast'),h=document.getElementById('v50hot');
-function show(s){t.textContent=s;t.style.display='block';clearTimeout(show.x);show.x=setTimeout(()=>t.style.display='none',2200)}
-function render(){let s=G.S,p=s.player;
-const lvl=document.getElementById('v50lvl'); if(lvl)lvl.textContent=p.level;
-const gold=document.getElementById('v50gold'); if(gold)gold.textContent=p.gold;
-const hp=document.getElementById('v50hp'); if(hp)hp.textContent=p.hp+'/'+p.maxHp;
-const mana=document.getElementById('v50mana'); if(mana)mana.textContent=p.mana+'/'+p.maxMana;
-const atk=document.getElementById('v50atk'); if(atk)atk.textContent=p.attack;
-const def=document.getElementById('v50def'); if(def)def.textContent=p.defense;
-const region=document.getElementById('v50region'); if(region)region.textContent=s.region;
-const day=document.getElementById('v50day'); if(day)day.textContent=s.world.day;
-const time=document.getElementById('v50time'); if(time)time.textContent=String(s.world.time).padStart(2,'0');
-const weather=document.getElementById('v50weather'); if(weather)weather.textContent=s.world.weather;
-const disc=document.getElementById('v50disc'); if(disc)disc.textContent=s.discovered.join(', ');
-const q=document.getElementById('v50q'); if(q)q.textContent=!s.quest.id?(s.quest.done?'Выполнен':'Поговори с Борисом'):s.quest.step===1?'Иди в лес':s.quest.step===2?'Найди пещеру':s.quest.step===3?'Открой сундук':s.quest.step===4?'Вернись к Борису':'Готово';
-if(h){h.innerHTML='';s.inventory.slice(0,8).forEach((it,i)=>{let b=document.createElement('button');b.textContent=it.name.slice(0,4)+' '+it.qty;if(i===s.selected)b.className='sel';b.onclick=()=>G.select(i);h.appendChild(b)})}}
-document.addEventListener('v50:toast',e=>show(e.detail.text));document.addEventListener('v50:state',render);
-const saveBtn=document.getElementById('v50save'); if(saveBtn)saveBtn.onclick=G.save;
-const loadBtn=document.getElementById('v50load'); if(loadBtn)loadBtn.onclick=G.load;
-const useBtn=document.getElementById('v50use'); if(useBtn)useBtn.onclick=G.use;
-const magicBtn=document.getElementById('v50magic'); if(magicBtn)magicBtn.onclick=G.cast;
-const attackBtn=document.getElementById('v50attack'); if(attackBtn)attackBtn.onclick=G.attackEnemy;
-const jumpBtn=document.getElementById('v50jump'); if(jumpBtn)jumpBtn.onclick=()=>show("🦘 Прыжок");
-const runBtn=document.getElementById('v50run'); if(runBtn)runBtn.onclick=()=>show("🏃 Бег включён");
-const mineBtn=document.getElementById('v50mine'); if(mineBtn)mineBtn.onclick=()=>G.openChest();
-const qbBtn=document.getElementById('v50qb'); if(qbBtn)qbBtn.onclick=()=>{let s=G.S;if(!s.quest.id)G.startQuest();else if(s.quest.step<4)G.questNext();else G.questComplete()};
-render();
-})();
+        // ===== V10: единая система прогресса =====
+        let v10={
+            level:1,xp:0,xpNeed:100,skillPoints:0,
+            skills:{strength:0,agility:0,luck:0,vitality:0},
+            title:'Новичок'
+        };
+        try{const s=localStorage.getItem('minicraft_v10');if(s)v10=Object.assign(v10,JSON.parse(s));}catch(e){}
+        function v10Save(){try{localStorage.setItem('minicraft_v10',JSON.stringify(v10));}catch(e){}}
+        window.v10AddXP=function(n){
+            v10.xp+=n;
+            while(v10.xp>=v10.xpNeed){v10.xp-=v10.xpNeed;v10.level++;v10.xpNeed=Math.floor(v10.xpNeed*1.4);v10.skillPoints++;
+                v10.title=v10.level>=20?'Легенда':v10.level>=15?'Герой':v10.level>=10?'Ветеран':v10.level>=5?'Бывалый':'Новичок';
+                game&&game.ui&&game.ui.showMessage('⭐ Уровень '+v10.level+'! Очков навыков: '+v10.skillPoints,'#f1c40f',4000);if(window.snd)snd.play('levelup');
+            }
+            v10Save();
+        };
+        window.v10Skill=function(k){
+            if(v10.skillPoints>0){v10.skillPoints--;v10.skills[k]++;v10Save();}
+        };
+        window.v10=v10;
 
+
+        // ===== V30: мир событий, торговцы, репутация =====
+        let v30={rep:0,traders:[],worldEvents:[]}; 
+        const V30_REPS=['Враг','Нейтрал','Друг','Уважаемый','Герой'];
+        window.v30AddRep=function(n){
+            v30.rep=Math.max(-100,Math.min(100,v30.rep+n));
+            game&&game.ui&&game.ui.showMessage('🤝 Репутация: '+v30.rep,'#3498db',2000);
+        };
+        window.v30=v30;
+
+
+        // ===== V50: мастер-система — финальный контент =====
+        let v50={
+            prestige:0,masteries:{sword:0,bow:0,magic:0,mining:0},
+            relics:[],titles:['Новичок'],currentTitle:'Новичок',
+            stats:{playTime:0,deaths:0,distance:0}
+        };
+        try{const s=localStorage.getItem('minicraft_v50');if(s)v50=Object.assign(v50,JSON.parse(s));}catch(e){}
+        function v50Save(){try{localStorage.setItem('minicraft_v50',JSON.stringify(v50));}catch(e){}}
+        window.v50Prestige=function(){
+            if(v10.level>=20){v50.prestige++;v50.titles.push('Престиж '+v50.prestige);
+                v10.level=1;v10.xp=0;v10.xpNeed=100;v10Save();v50Save();
+                game.ui.showMessage('👑 ПРЕСТИЖ '+v50.prestige+'! Весь прогресс усилен!','#f1c40f',6000);}
+        };
+        window.v50Mastery=function(k){v50.masteries[k]++;v50Save();};
+        window.v50=v50;
+        // V50 HUD данные — обновление раз в секунду
+        setInterval(()=>{
+            const el=document.getElementById('v50-hud');if(!el)return;
+            const rows=el.querySelectorAll('.v50-val');if(rows.length<4)return;
+            rows[0].textContent=v50.prestige;
+            rows[1].textContent=v50.currentTitle;
+            rows[2].textContent=v50.relics.length;
+            rows[3].textContent=Math.floor(v50.stats.playTime/60)+'м';
+            v50.stats.playTime++;
+        },1000);
+
+
+        // V50 HUD — баффы
+        (function(){
+            const buffsEl=document.getElementById('v50-buffs');
+            if(!buffsEl)return;
+            setInterval(()=>{
+                let h='';
+                if(v3.buffs)for(const k in v3.buffs){const b=v3.buffs[k];if(b.t>0)h+='<div class="v50-buff">'+k+' x'+b.mult+' ('+Math.ceil(b.t)+'с)</div>';}
+                buffsEl.innerHTML=h;
+            },500);
+            // тикер баффов
+            setInterval(()=>{
+                if(v3.buffs)for(const k in v3.buffs){if(v3.buffs[k].t>0)v3.buffs[k].t-=1;}
+            },1000);
+        })();
+
+
+        // мобильная проверка — включаем touch
+        (function(){
+            if('ontouchstart' in window||navigator.maxTouchPoints>0){document.body.classList.add('touch-on');}
+        })();
