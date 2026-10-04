@@ -1,8 +1,8 @@
 // ============================================================
 //  🏙️ ЗАГРУЗКА ГОРОДОВ И ДЕРЕВЕНЬ
 // ============================================================
-import { initCities, getCityPositions } from './cities.js';
-import { initVillages, getVillagePositions } from './villages_extended.js';
+import { initCities, getCityPositions } from './js/cities.js';
+import { initVillages, getVillagePositions } from './js/villages_extended.js';
 
 // Ждём загрузки игры
 const waitForGame = setInterval(() => {
