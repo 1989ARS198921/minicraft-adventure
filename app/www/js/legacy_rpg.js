@@ -300,7 +300,7 @@ window.MiniCraftCombatV8 = (() => {
   function attack(){ if(!state.alive) return; const now=performance.now(); if(now-state.lastAttack<350) return; state.lastAttack=now; const e=nearest(); if(!e){toast("🔎 Врагов рядом нет.");return;} const d=e.mesh.position.distanceTo(camera.position); if(d>state.attackRange){toast("⚔️ Подойди ближе.");return;} e.hp-=state.weaponDamage; toast(`⚔️ Удар! ${Math.max(0,e.hp)}/${e.maxHp} HP`); if(e.hp<=0 && window.MiniCraftCombatV6) window.MiniCraftCombatV6.attackNearest(state.weaponDamage); window.dispatchEvent(new CustomEvent("v8:attack",{detail:{enemy:e}})); }
   function damage(amount){ if(!state.alive)return; state.hp=Math.max(0,state.hp-amount); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); if(state.hp<=0) die(); }
   function die(){ state.alive=false; toast("☠️ Ты погиб!"); window.dispatchEvent(new CustomEvent("v8:death")); }
-  function respawn(){ state.alive=true;state.hp=state.maxHp;state.respawns++; if(camera) camera.position.set(0,2,0); toast("✨ Возрождение! Ты снова в безопасности."); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); window.dispatchEvent(new CustomEvent("v8:respawn")); }
+  function respawn(){ state.alive=true;state.hp=state.maxHP;state.respawns++; if(camera) camera.position.set(0,2,0); toast("✨ Возрождение! Ты снова в безопасности."); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); window.dispatchEvent(new CustomEvent("v8:respawn")); }
   function heal(amount=25){ if(!state.alive){respawn();return;} state.hp=Math.min(state.maxHP,state.hp+amount); window.dispatchEvent(new CustomEvent("v8:hp",{detail:state.hp})); toast(`❤️ +${amount} HP`); }
   return {state,attack,damage,respawn,heal};
 })();
