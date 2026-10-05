@@ -31,7 +31,8 @@ export const CONFIG = {
   TORCH_RADIUS: 10,     // радиус света одного факела
 
   // --- Сохранение ---
-  SAVE_KEY: 'minimine_save_v4',
+  SAVE_KEY: 'minimine_save_v4', // мир: зерно + изменения + прогресс героя
+  ACH_KEY: 'minicraft_ach',     // достижения: отдельно, живут вечно
   SAVE_INTERVAL: 2000   // автосохранение каждые 2 секунды
 };
 

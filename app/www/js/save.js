@@ -19,6 +19,9 @@ let dirty = false; // флаг «есть несохранённые измен�
 
 export function initSave(gameContext) {
   G = gameContext;
+  // Разовая зачистка мёртвых ключей старых систем (V10/V30/V50 и прочих)
+  for (const k of ['minicraft_save', 'minicraft_adventure_save_v10', 'minicraft_adventure_save_v30', 'minicraft_adventure_save_v50'])
+    try { localStorage.removeItem(k); } catch (e) {}
   on('dirty', () => dirty = true);                 // шина сообщает об изменениях
   setInterval(saveWorld, CONFIG.SAVE_INTERVAL);    // сохраняем каждые 2 секунды
   window.addEventListener('beforeunload', saveWorld); // и при закрытии вкладки

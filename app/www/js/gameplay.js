@@ -11,6 +11,7 @@ import { showToast, updateInvUI, NAMES, ICONS } from './ui.js';
 import { sfx } from './audio.js';
 import { questProgress } from './quests.js';
 import { removeBlockAt } from './world.js';
+import { CONFIG } from './config.js';
 
 let G = null;
 
@@ -38,7 +39,7 @@ export const ACHIEVEMENTS = [
   { id: 'quest10',    icon: '📋', name: 'Исполнитель',      desc: 'Выполни 10 заданий' },
 ];
 
-const ACH_KEY = 'minicraft_ach'; // достижения — навсегда, даже в новом мире!
+const ACH_KEY = CONFIG.ACH_KEY; // достижения — навсегда, даже в новом мире!
 const unlocked = new Set();
 try { JSON.parse(localStorage.getItem(ACH_KEY) || '[]').forEach(id => unlocked.add(id)); } catch (e) {}
 

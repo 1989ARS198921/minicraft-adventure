@@ -7,6 +7,7 @@ import { toggleCamera } from './playermodel.js';
 import { selectSlot, showToast, toggleBackpack } from './ui.js';
 import { tryMakeFire } from './campfire.js';
 import { openBigMap } from './minimap.js';
+import { CONFIG } from './config.js';
 
 let G = null;
 const overlay = () => document.getElementById('overlay');
@@ -58,7 +59,7 @@ function initKeyboard() {
 function initMouse() {
   // Главное меню: старт только по кнопке ▶️
   const btnPlay = document.getElementById('btnPlay');
-  try { if (localStorage.getItem('minicraft_save')) btnPlay.textContent = '▶️ Продолжить'; } catch (e) {}
+  try { if (localStorage.getItem(CONFIG.SAVE_KEY)) btnPlay.textContent = '▶️ Продолжить'; } catch (e) {}
   btnPlay.addEventListener('click', e => {
     e.stopPropagation();
     btnPlay.blur(); // фокус убрать: Пробел не должен «кликать» кнопку
@@ -91,7 +92,7 @@ function initMouse() {
   });
   document.getElementById('btnNewWorld').addEventListener('click', e => {
     e.stopPropagation();
-    if (confirm('Точно стереть мир и построить новый? Все постройки пропадут!')) { localStorage.clear(); location.reload(); }
+    if (confirm('Точно стереть мир и построить новый? Все постройки пропадут!')) { localStorage.removeItem(CONFIG.SAVE_KEY); location.reload(); } // достижения (ACH_KEY) не трогаем — они навсегда
   });
 }
 
