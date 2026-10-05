@@ -401,177 +401,315 @@ function makePixelMob(kind) {
 
 function makeBossModel(bossData) {
   const g = new THREE.Group();
-  const color = bossData.color;
-  const size = bossData.size;
+  const s = bossData.size;
   const id = bossData.id;
-  
-  const mat = new THREE.MeshLambertMaterial({ color: color });
-  
-  // ---- ТЕЛО (большое) ----
-  const body = new THREE.Mesh(new THREE.BoxGeometry(size * 1.2, size * 1.0, size * 0.8), mat);
-  body.position.y = size * 0.5;
-  g.add(body);
-  
-  // ---- ГОЛОВА ----
-  const headMat = new THREE.MeshLambertMaterial({ color: color });
-  const head = new THREE.Mesh(new THREE.BoxGeometry(size * 0.7, size * 0.6, size * 0.5), headMat);
-  head.position.y = size * 1.1;
-  g.add(head);
-  
-  // ---- ГЛАЗА (светятся) ----
-  const eyeMat = new THREE.MeshLambertMaterial({ color: 0xFF0000, emissive: 0xFF0000, emissiveIntensity: 0.5 });
-  for (const ex of [-0.18, 0.18]) {
-    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.06), eyeMat);
-    eye.position.set(ex * size, size * 1.15, size * 0.28);
-    g.add(eye);
-  }
-  
-  // ---- СПЕЦИАЛЬНЫЕ ДЕТАЛИ ДЛЯ КАЖДОГО БОССА ----
-  
-  // 1. ЛЕСНОЙ ВЕЛИКАН — дубина
-  if (id === 'forest_giant') {
-    const clubMat = new THREE.MeshLambertMaterial({ color: 0x4A2A1A });
-    const club = new THREE.Mesh(new THREE.BoxGeometry(0.2, size * 0.8, 0.2), clubMat);
-    club.position.set(size * 1.0, size * 0.5, 0);
-    g.add(club);
-    const headClub = new THREE.Mesh(new THREE.BoxGeometry(size * 0.4, size * 0.25, size * 0.4), clubMat);
-    headClub.position.set(size * 1.0, size * 0.9, 0);
-    g.add(headClub);
-  }
-  
-  // 2. КАМЕННЫЙ ГОЛЕМ — молот
-  if (id === 'stone_golem') {
-    const hammerMat = new THREE.MeshLambertMaterial({ color: 0x8B8B8B });
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, size * 0.7, 0.15), hammerMat);
-    handle.position.set(size * 1.1, size * 0.5, 0);
-    g.add(handle);
-    const headHammer = new THREE.Mesh(new THREE.BoxGeometry(size * 0.6, size * 0.3, size * 0.6), hammerMat);
-    headHammer.position.set(size * 1.1, size * 0.9, 0);
-    g.add(headHammer);
-  }
-  
-  // 3. ЛЕДЯНОЙ ДРАКОН — крылья
-  if (id === 'ice_dragon') {
-    const wingMat = new THREE.MeshLambertMaterial({ color: 0xAAEEFF, transparent: true, opacity: 0.6 });
-    for (const side of [-1, 1]) {
-      const wing = new THREE.Mesh(new THREE.BoxGeometry(size * 1.0, 0.05, size * 0.6), wingMat);
-      wing.position.set(side * size * 0.9, size * 0.7, 0);
-      wing.rotation.z = side * 0.5;
-      wing.rotation.x = 0.3;
-      g.add(wing);
-    }
-  }
-  
-  // 4. ПАУЧИХА — дополнительные ноги
-  if (id === 'spider_queen') {
-    const legMat2 = new THREE.MeshLambertMaterial({ color: 0x3A1A4A });
-    for (let i = 0; i < 4; i++) {
-      for (const side of [-1, 1]) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(size * 0.5, 0.04, 0.04), legMat2);
-        leg.position.set(side * size * 0.7, size * 0.3 + i * 0.15, size * 0.1);
-        leg.rotation.z = side * 0.4 + i * 0.05;
-        g.add(leg);
-      }
-    }
-  }
-  
-  // 5. НЕКРОМАНТ — посох
-  if (id === 'necromancer') {
-    const staffMat = new THREE.MeshLambertMaterial({ color: 0x2A1A3A });
-    const staff = new THREE.Mesh(new THREE.BoxGeometry(0.06, size * 0.9, 0.06), staffMat);
-    staff.position.set(size * 0.7, size * 0.7, 0);
-    g.add(staff);
-    const topStaff = new THREE.Mesh(new THREE.SphereGeometry(size * 0.08, 8, 8), 
-      new THREE.MeshLambertMaterial({ color: 0x9B59B6, emissive: 0x9B59B6, emissiveIntensity: 0.3 }));
-    topStaff.position.set(size * 0.7, size * 1.15, 0);
-    g.add(topStaff);
-  }
-  
-  // 6. ОГНЕННЫЙ ЭЛЕМЕНТАЛЬ — светящийся шар
-  if (id === 'fire_elemental') {
-    const glowMat = new THREE.MeshLambertMaterial({ color: 0xFF6633, emissive: 0xFF4400, emissiveIntensity: 0.5 });
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(size * 0.3, 8, 8), glowMat);
-    glow.position.set(0, size * 1.2, 0);
-    g.add(glow);
-  }
-  
-  // 7. ТЁМНЫЙ РЫЦАРЬ — меч
-  if (id === 'dark_knight') {
-    const swordMat = new THREE.MeshLambertMaterial({ color: 0xCCCCCC });
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, size * 0.6, 0.06), swordMat);
-    blade.position.set(size * 0.6, size * 0.8, 0);
-    g.add(blade);
-    const guard = new THREE.Mesh(new THREE.BoxGeometry(size * 0.3, 0.04, 0.08), swordMat);
-    guard.position.set(size * 0.6, size * 0.5, 0);
-    g.add(guard);
-  }
-  
-  // 8. КРАКЕН — щупальца
-  if (id === 'kraken') {
-    const tentMat = new THREE.MeshLambertMaterial({ color: 0x3A5A7A });
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, size * 0.6, 6), tentMat);
-      tent.position.set(Math.cos(angle) * size * 0.6, size * 0.2, Math.sin(angle) * size * 0.6);
-      tent.rotation.z = Math.cos(angle) * 0.3;
-      tent.rotation.x = Math.sin(angle) * 0.3;
-      g.add(tent);
-    }
-  }
-  
-  // 9. КОРОЛЬ ГОБЛИНОВ — корона
-  if (id === 'goblin_king') {
-    const crownMat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
-    const crown = new THREE.Mesh(new THREE.BoxGeometry(size * 0.5, size * 0.15, size * 0.4), crownMat);
-    crown.position.y = size * 1.2;
-    g.add(crown);
-    for (let i = 0; i < 3; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, size * 0.15, 4), crownMat);
-      spike.position.set((i - 1) * size * 0.18, size * 1.3, 0);
-      g.add(spike);
-    }
-  }
-  
-  // 10. ЛЕДЯНОЙ ТРОЛЛЬ — ледяная дубина
-  if (id === 'ice_troll') {
-    const iceMat = new THREE.MeshLambertMaterial({ color: 0xAAEEFF, transparent: true, opacity: 0.7 });
-    const club = new THREE.Mesh(new THREE.BoxGeometry(0.2, size * 0.5, 0.2), iceMat);
-    club.position.set(size * 0.7, size * 0.4, 0);
-    g.add(club);
-    const headClub2 = new THREE.Mesh(new THREE.BoxGeometry(size * 0.4, size * 0.3, size * 0.4), iceMat);
-    headClub2.position.set(size * 0.7, size * 0.7, 0);
-    g.add(headClub2);
-  }
-  
-  // ---- РУКИ ДЛЯ АНИМАЦИИ ----
-  const armMat2 = new THREE.MeshLambertMaterial({ color: color });
-  const armL2 = new THREE.Mesh(new THREE.BoxGeometry(size * 0.2, size * 0.5, size * 0.2), armMat2);
-  armL2.position.set(-size * 0.7, size * 0.5, 0);
-  g.add(armL2);
-  const armR2 = new THREE.Mesh(new THREE.BoxGeometry(size * 0.2, size * 0.5, size * 0.2), armMat2);
-  armR2.position.set(size * 0.7, size * 0.5, 0);
-  g.add(armR2);
-  
-  // ---- НОГИ ----
-  const legMat2 = new THREE.MeshLambertMaterial({ color: color });
-  const legL2 = new THREE.Mesh(new THREE.BoxGeometry(size * 0.25, size * 0.3, size * 0.25), legMat2);
-  legL2.position.set(-size * 0.25, size * 0.15, 0);
-  g.add(legL2);
-  const legR2 = new THREE.Mesh(new THREE.BoxGeometry(size * 0.25, size * 0.3, size * 0.25), legMat2);
-  legR2.position.set(size * 0.25, size * 0.15, 0);
-  g.add(legR2);
-  
-  g.scale.set(1, 1, 1);
-  g.add(makeNameTag(bossData.name));
-  
-  return { 
-    group: g, 
-    armL: armL2, 
-    armR: armR2, 
-    legL: legL2, 
-    legR: legR2, 
-    head: head 
+  const base = bossData.color;
+  const shadeC = (c, f) => new THREE.Color(c).multiplyScalar(f).getHex();
+  const mat  = new THREE.MeshLambertMaterial({ color: base });
+  const matD = new THREE.MeshLambertMaterial({ color: shadeC(base, 0.55) });
+  const matL = new THREE.MeshLambertMaterial({ color: shadeC(base, 1.4) });
+  const glow = (c, i = 0.8) => new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: i });
+  const box = (parent, w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    q.position.set(x, y, z); q.rotation.set(rx, ry, rz); parent.add(q); return q;
   };
+  const cone = (parent, r, h, m, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const q = new THREE.Mesh(new THREE.ConeGeometry(r, h, 4), m);
+    q.position.set(x, y, z); q.rotation.set(rx, ry, rz); parent.add(q); return q;
+  };
+  // Конечность с шарниром СВЕРХУ — красиво шагает и замахивается
+  const limb = (w, h, d, m, x, y, z) => {
+    const p = new THREE.Group(); p.position.set(x, y, z);
+    const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    q.position.y = -h / 2; p.add(q); g.add(p); return p;
+  };
+  const eyes = (parent, y, z, dx, c, w = 0.1 * s, h = 0.08 * s) => {
+    const m = glow(c, 0.9);
+    box(parent, w, h, 0.05 * s, m, -dx, y, z);
+    box(parent, w, h, 0.05 * s, m, dx, y, z);
+  };
+  let armL = null, armR = null, legL = null, legR = null, head = null;
+  let tagY = s * 1.8;
+
+  if (id === 'forest_giant') { // 🌳 зелёный великан с дубиной
+    legL = limb(s * 0.32, s * 0.55, s * 0.36, matD, -s * 0.28, s * 0.55, 0);
+    legR = limb(s * 0.32, s * 0.55, s * 0.36, matD, s * 0.28, s * 0.55, 0);
+    box(g, s * 1.25, s * 0.9, s * 0.85, mat, 0, s * 1.0, 0);              // торс
+    box(g, s * 0.85, s * 0.65, s * 0.12, matL, 0, s * 0.92, s * 0.42);    // живот
+    box(g, s * 1.3, s * 0.18, s * 0.9, matD, 0, s * 1.42, 0);             // поясница-кора
+    for (const sd of [-1, 1]) box(g, s * 0.42, s * 0.3, s * 0.5, matD, sd * s * 0.62, s * 1.42, 0); // плечи
+    armL = limb(s * 0.3, s * 0.9, s * 0.32, mat, -s * 0.82, s * 1.38, 0);
+    armR = limb(s * 0.3, s * 0.9, s * 0.32, mat, s * 0.82, s * 1.38, 0);
+    const clubM = new THREE.MeshLambertMaterial({ color: 0x5A3A1E });
+    box(armR, s * 0.16, s * 0.55, s * 0.16, clubM, 0, -s * 1.1, 0);       // дубина: рукоять
+    box(armR, s * 0.4, s * 0.34, s * 0.4, clubM, 0, -s * 1.45, 0);        // дубина: била
+    box(armR, s * 0.44, s * 0.1, s * 0.44, matD, 0, -s * 1.3, 0);
+    head = new THREE.Group(); head.position.set(0, s * 1.72, 0); g.add(head);
+    box(head, s * 0.62, s * 0.55, s * 0.55, mat, 0, 0, 0);
+    box(head, s * 0.66, s * 0.14, s * 0.58, matD, 0, s * 0.18, 0);        // брови
+    box(head, s * 0.14, s * 0.16, s * 0.12, matL, 0, -s * 0.04, s * 0.3); // нос
+    eyes(head, s * 0.06, s * 0.28, s * 0.16, 0xFFCC33);
+    const leafM = new THREE.MeshLambertMaterial({ color: 0x4FCB24 });
+    box(head, s * 0.5, s * 0.16, s * 0.5, leafM, 0, s * 0.34, 0);         // листва на макушке
+    for (const sd of [-1, 1]) box(g, s * 0.3, s * 0.2, s * 0.3, leafM, sd * s * 0.55, s * 1.55, 0); // мох на плечах
+    box(g, s * 0.3, s * 0.25, s * 0.14, leafM, 0, s * 1.25, s * 0.43);    // борода-мох
+    tagY = s * 2.15;
+  }
+
+  else if (id === 'stone_golem') { // 🗿 голем из плит с жарким ядром
+    legL = limb(s * 0.36, s * 0.42, s * 0.4, matD, -s * 0.3, s * 0.42, 0);
+    legR = limb(s * 0.36, s * 0.42, s * 0.4, matD, s * 0.3, s * 0.42, 0);
+    box(g, s * 1.35, s * 0.45, s * 0.9, mat, 0, s * 0.65, 0);             // плита 1
+    box(g, s * 1.18, s * 0.4, s * 0.84, matL, 0, s * 1.06, 0);            // плита 2
+    box(g, s * 1.0, s * 0.34, s * 0.78, mat, 0, s * 1.42, 0);             // плита 3
+    box(g, s * 0.3, s * 0.3, s * 0.1, glow(0xFF8833, 1), 0, s * 1.05, s * 0.44); // 🔥 ядро
+    box(g, s * 0.36, s * 0.36, s * 0.04, matD, 0, s * 1.05, s * 0.42);    // рамка ядра
+    box(g, s * 0.5, s * 0.06, s * 0.02, matD, -s * 0.3, s * 0.85, s * 0.46, 0, 0, 0.5);  // трещины
+    box(g, s * 0.4, s * 0.06, s * 0.02, matD, s * 0.35, s * 1.2, s * 0.43, 0, 0, -0.4);
+    const mossM = new THREE.MeshLambertMaterial({ color: 0x4A8A3A });
+    box(g, s * 0.3, s * 0.14, s * 0.3, mossM, -s * 0.45, s * 1.62, 0);    // мох
+    box(g, s * 0.24, s * 0.12, s * 0.24, mossM, s * 0.5, s * 0.9, s * 0.3);
+    armL = limb(s * 0.4, s * 0.85, s * 0.42, mat, -s * 0.85, s * 1.35, 0);
+    armR = limb(s * 0.4, s * 0.85, s * 0.42, mat, s * 0.85, s * 1.35, 0);
+    box(armL, s * 0.46, s * 0.3, s * 0.48, matD, 0, -s * 0.85, 0);        // кулаки
+    box(armR, s * 0.46, s * 0.3, s * 0.48, matD, 0, -s * 0.85, 0);
+    box(armR, s * 0.14, s * 0.6, s * 0.14, matD, 0, -s * 1.2, 0);         // молот: рукоять
+    box(armR, s * 0.6, s * 0.32, s * 0.34, matL, 0, -s * 1.55, 0);        // молот: бойок
+    head = new THREE.Group(); head.position.set(0, s * 1.72, 0); g.add(head);
+    box(head, s * 0.52, s * 0.42, s * 0.5, mat, 0, 0, 0);
+    box(head, s * 0.56, s * 0.1, s * 0.54, matD, 0, s * 0.14, 0);         // надбровие
+    eyes(head, 0, s * 0.26, s * 0.13, 0x66EEFF);
+    tagY = s * 2.05;
+  }
+
+  else if (id === 'ice_dragon') { // ❄️ дракон: морда, рога, крылья, хвост, шипы
+    const boneM = new THREE.MeshLambertMaterial({ color: 0xE8F4FF });
+    const wingM = new THREE.MeshLambertMaterial({ color: 0xAAEEFF, transparent: true, opacity: 0.65 });
+    box(g, s * 0.85, s * 0.65, s * 1.3, mat, 0, s * 0.6, -s * 0.15);      // туловище
+    box(g, s * 0.6, s * 0.4, s * 1.1, matL, 0, s * 0.42, -s * 0.15);      // брюхо
+    box(g, s * 0.4, s * 0.55, s * 0.4, mat, 0, s * 0.95, s * 0.45, -0.35);// шея
+    head = new THREE.Group(); head.position.set(0, s * 1.25, s * 0.62); g.add(head);
+    box(head, s * 0.5, s * 0.38, s * 0.5, mat, 0, 0, 0);
+    box(head, s * 0.3, s * 0.2, s * 0.4, matL, 0, -s * 0.06, s * 0.4);    // морда
+    box(head, s * 0.32, s * 0.06, s * 0.3, matD, 0, -s * 0.16, s * 0.38); // челюсть
+    cone(head, s * 0.06, s * 0.3, boneM, -s * 0.14, s * 0.28, -s * 0.1, -0.4); // рога
+    cone(head, s * 0.06, s * 0.3, boneM, s * 0.14, s * 0.28, -s * 0.1, -0.4);
+    eyes(head, s * 0.06, s * 0.26, s * 0.15, 0x44EEFF);
+    for (const sd of [-1, 1]) {                                           // крылья
+      const w = new THREE.Group(); w.position.set(sd * s * 0.35, s * 0.85, -s * 0.2); g.add(w);
+      box(w, s * 0.9, s * 0.06, s * 0.1, boneM, sd * s * 0.45, s * 0.15, 0, 0, 0, sd * 0.35);
+      box(w, s * 0.85, s * 0.03, s * 0.55, wingM, sd * s * 0.48, -s * 0.02, -s * 0.2, 0.15, 0, sd * 0.3);
+      box(w, s * 0.5, s * 0.03, s * 0.4, wingM, sd * s * 0.75, -s * 0.12, -s * 0.25, 0.2, 0, sd * 0.45);
+    }
+    let tx = 0, tz = -s * 0.85, tw = s * 0.4;                             // хвост: 3 звена
+    for (let i = 0; i < 3; i++) { box(g, tw, tw * 0.8, s * 0.4, mat, tx, s * 0.5 - i * s * 0.1, tz, 0.2 * i); tz -= s * 0.32; tw *= 0.7; }
+    cone(g, s * 0.1, s * 0.3, boneM, 0, s * 0.28, tz + s * 0.1, 1.2);     // стрела на хвосте
+    for (let i = 0; i < 4; i++) cone(g, s * 0.07, s * 0.22, boneM, 0, s * (0.95 - i * 0.06), s * (0.1 - i * 0.3), 0); // шипы на спине
+    legL = limb(s * 0.28, s * 0.5, s * 0.3, matD, -s * 0.35, s * 0.5, -s * 0.5);  // задние лапы
+    legR = limb(s * 0.28, s * 0.5, s * 0.3, matD, s * 0.35, s * 0.5, -s * 0.5);
+    armL = limb(s * 0.2, s * 0.42, s * 0.22, mat, -s * 0.32, s * 0.55, s * 0.35); // передние лапы
+    armR = limb(s * 0.2, s * 0.42, s * 0.22, mat, s * 0.32, s * 0.55, s * 0.35);
+    for (const p of [legL, legR, armL, armR]) box(p, s * 0.16, s * 0.08, s * 0.2, boneM, 0, -s * 0.42, s * 0.05); // когти
+    tagY = s * 1.6;
+  }
+
+  else if (id === 'spider_queen') { // 🕷️ брюшко, 8 сегментных ног, жвала
+    box(g, s * 0.95, s * 0.8, s * 0.95, mat, 0, s * 0.55, -s * 0.6);      // брюшко
+    box(g, s * 0.7, s * 0.5, s * 0.7, matD, 0, s * 0.5, -s * 0.68);
+    box(g, s * 0.99, s * 0.12, s * 0.5, glow(0xCC44FF, 0.5), 0, s * 0.72, -s * 0.6); // узор
+    box(g, s * 0.12, s * 0.5, s * 0.12, matD, 0, s * 0.4, -s * 1.12, 0.5);// пряльные бородавки
+    box(g, s * 0.6, s * 0.4, s * 0.5, matD, 0, s * 0.45, s * 0.05);       // головогрудь
+    head = new THREE.Group(); head.position.set(0, s * 0.45, s * 0.38); g.add(head);
+    box(head, s * 0.45, s * 0.3, s * 0.3, mat, 0, 0, 0);
+    eyes(head, s * 0.06, s * 0.16, s * 0.1, 0xFF2222, s * 0.09, s * 0.09);
+    eyes(head, -s * 0.05, s * 0.16, s * 0.14, 0xFF2222, s * 0.06, s * 0.06);
+    const fangM = new THREE.MeshLambertMaterial({ color: 0xF0E8D8 });
+    box(head, s * 0.06, s * 0.18, s * 0.06, fangM, -s * 0.1, -s * 0.18, s * 0.12, 0.4); // жвала
+    box(head, s * 0.06, s * 0.18, s * 0.06, fangM, s * 0.1, -s * 0.18, s * 0.12, 0.4);
+    const legPivots = [];
+    for (let i = 0; i < 4; i++) for (const sd of [-1, 1]) {               // 8 ног
+      const p = new THREE.Group(); p.position.set(sd * s * 0.28, s * 0.5, s * 0.25 - i * s * 0.22); g.add(p);
+      box(p, s * 0.5, s * 0.07, s * 0.07, matD, sd * s * 0.25, s * 0.12, 0, 0, 0, sd * 0.55);
+      box(p, s * 0.06, s * 0.45, s * 0.06, matD, sd * s * 0.48, -s * 0.15, 0, 0, 0, sd * 0.15);
+      legPivots.push(p);
+    }
+    legL = legPivots[2]; legR = legPivots[3]; armL = legPivots[0]; armR = legPivots[1];
+    tagY = s * 1.25;
+  }
+
+  else if (id === 'necromancer') { // 💀 мантия, капюшон, череп, посох
+    const robeM = mat, trimM = glow(0x9B59B6, 0.6), boneM = new THREE.MeshLambertMaterial({ color: 0xE8E0D0 });
+    box(g, s * 0.95, s * 0.5, s * 0.7, robeM, 0, s * 0.25, 0);            // подол
+    box(g, s * 0.75, s * 0.55, s * 0.55, robeM, 0, s * 0.72, 0);          // ряса
+    box(g, s * 0.99, s * 0.08, s * 0.74, trimM, 0, s * 0.06, 0);          // светящийся подол
+    box(g, s * 0.1, s * 0.6, s * 0.02, trimM, 0, s * 0.6, s * 0.29);      // отделка спереди
+    box(g, s * 0.85, s * 0.25, s * 0.65, matD, 0, s * 0.95, 0);           // плечи-накидка
+    armL = limb(s * 0.24, s * 0.55, s * 0.26, robeM, -s * 0.45, s * 0.95, 0);
+    armR = limb(s * 0.24, s * 0.55, s * 0.26, robeM, s * 0.45, s * 0.95, 0);
+    box(armL, s * 0.14, s * 0.12, s * 0.14, boneM, 0, -s * 0.58, 0);      // кисти-кости
+    box(armR, s * 0.14, s * 0.12, s * 0.14, boneM, 0, -s * 0.58, 0);
+    box(armR, s * 0.08, s * 1.1, s * 0.08, matD, 0, -s * 0.55, s * 0.12); // посох
+    box(armR, s * 0.2, s * 0.2, s * 0.2, trimM, 0, s * 0.05, s * 0.12);   // сфера
+    cone(armR, s * 0.05, s * 0.18, boneM, -s * 0.1, s * 0.02, s * 0.12, 0, 0, 0.6);
+    cone(armR, s * 0.05, s * 0.18, boneM, s * 0.1, s * 0.02, s * 0.12, 0, 0, -0.6);
+    head = new THREE.Group(); head.position.set(0, s * 1.18, 0); g.add(head);
+    box(head, s * 0.55, s * 0.5, s * 0.55, matD, 0, s * 0.05, -s * 0.03); // капюшон
+    box(head, s * 0.6, s * 0.15, s * 0.6, matD, 0, s * 0.3, 0);           // поля капюшона
+    box(head, s * 0.36, s * 0.32, s * 0.1, boneM, 0, 0, s * 0.26);        // лицо-череп
+    box(head, s * 0.1, s * 0.08, s * 0.06, matD, 0, -s * 0.04, s * 0.3);  // нос-пустота
+    eyes(head, s * 0.05, s * 0.3, s * 0.1, 0xBB66FF, s * 0.08, s * 0.07);
+    legL = limb(s * 0.2, s * 0.3, s * 0.22, matD, -s * 0.2, s * 0.3, 0);  // под рясой
+    legR = limb(s * 0.2, s * 0.3, s * 0.22, matD, s * 0.2, s * 0.3, 0);
+    tagY = s * 1.6;
+  }
+
+  else if (id === 'fire_elemental') { // 🔥 столб пламени, парящие угли
+    const rockM = new THREE.MeshLambertMaterial({ color: 0x2A1A14 });
+    const emberM = glow(0xFF4400, 0.7), flameM = glow(0xFF8833, 0.9), coreM = glow(0xFFCC44, 1);
+    box(g, s * 0.7, s * 0.4, s * 0.6, rockM, 0, s * 0.2, 0);              // базальт
+    box(g, s * 0.6, s * 0.45, s * 0.5, emberM, 0, s * 0.6, 0);            // угли
+    box(g, s * 0.48, s * 0.45, s * 0.42, flameM, 0, s * 1.0, 0);          // пламя
+    box(g, s * 0.2, s * 0.5, s * 0.06, coreM, 0, s * 0.85, s * 0.22);     // жаркое сердце
+    box(g, s * 0.5, s * 0.06, s * 0.02, rockM, -s * 0.12, s * 0.62, s * 0.26, 0, 0, 0.6); // трещины
+    armL = limb(s * 0.24, s * 0.6, s * 0.26, emberM, -s * 0.45, s * 1.1, 0);
+    armR = limb(s * 0.24, s * 0.6, s * 0.26, emberM, s * 0.45, s * 1.1, 0);
+    cone(armL, s * 0.14, s * 0.3, flameM, 0, -s * 0.72, 0);               // руки-факелы
+    cone(armR, s * 0.14, s * 0.3, flameM, 0, -s * 0.72, 0);
+    head = new THREE.Group(); head.position.set(0, s * 1.32, 0); g.add(head);
+    cone(head, s * 0.3, s * 0.55, flameM, 0, s * 0.15, 0);                // голова-пламя
+    cone(head, s * 0.18, s * 0.4, coreM, 0, s * 0.22, 0);
+    eyes(head, s * 0.02, s * 0.14, s * 0.09, 0xFFFF88, s * 0.07, s * 0.09);
+    legL = limb(s * 0.22, s * 0.35, s * 0.24, flameM, -s * 0.18, s * 0.35, 0); // огненные струи
+    legR = limb(s * 0.22, s * 0.35, s * 0.24, flameM, s * 0.18, s * 0.35, 0);
+    box(g, s * 0.14, s * 0.14, s * 0.14, emberM, -s * 0.6, s * 1.3, s * 0.2, 0.5, 0.3); // парящие угли
+    box(g, s * 0.1, s * 0.1, s * 0.1, emberM, s * 0.62, s * 0.9, -s * 0.25, 0.3, 0.6);
+    box(g, s * 0.12, s * 0.12, s * 0.12, emberM, s * 0.3, s * 1.55, s * 0.1, 0.7, 0.2);
+    tagY = s * 1.6;
+  }
+
+  else if (id === 'dark_knight') { // ⚔️ латник: пластрон, наплечники, плащ, меч
+    const steelM = new THREE.MeshLambertMaterial({ color: 0x3A3A4A });
+    const steelD = new THREE.MeshLambertMaterial({ color: 0x22222E });
+    const capeM = new THREE.MeshLambertMaterial({ color: 0x5A0A14 });
+    legL = limb(s * 0.26, s * 0.55, s * 0.3, steelM, -s * 0.24, s * 0.55, 0);
+    legR = limb(s * 0.26, s * 0.55, s * 0.3, steelM, s * 0.24, s * 0.55, 0);
+    box(legL, s * 0.3, s * 0.12, s * 0.38, steelD, 0, -s * 0.52, s * 0.03); // сабатоны
+    box(legR, s * 0.3, s * 0.12, s * 0.38, steelD, 0, -s * 0.52, s * 0.03);
+    box(g, s * 0.85, s * 0.75, s * 0.55, steelM, 0, s * 0.95, 0);         // кираса
+    box(g, s * 0.5, s * 0.5, s * 0.08, steelD, 0, s * 1.0, s * 0.28);     // пластрон
+    box(g, s * 0.12, s * 0.12, s * 0.06, glow(0xDD1133, 0.9), 0, s * 1.05, s * 0.32); // рубин
+    box(g, s * 0.9, s * 0.12, s * 0.6, steelD, 0, s * 0.6, 0);            // пояс
+    box(g, s * 0.7, s * 0.9, s * 0.05, capeM, 0, s * 0.95, -s * 0.32, 0.08); // плащ
+    for (const sd of [-1, 1]) {                                            // наплечники с шипами
+      box(g, s * 0.4, s * 0.3, s * 0.45, steelD, sd * s * 0.55, s * 1.32, 0);
+      cone(g, s * 0.07, s * 0.22, steelM, sd * s * 0.55, s * 1.55, 0);
+    }
+    armL = limb(s * 0.22, s * 0.65, s * 0.26, steelM, -s * 0.6, s * 1.28, 0);
+    armR = limb(s * 0.22, s * 0.65, s * 0.26, steelM, s * 0.6, s * 1.28, 0);
+    box(armR, s * 0.1, s * 0.25, s * 0.1, steelD, 0, -s * 0.7, 0);        // рукоять
+    box(armR, s * 0.4, s * 0.08, s * 0.12, steelD, 0, -s * 0.85, 0);      // гарда
+    box(armR, s * 0.16, s * 0.9, s * 0.05, new THREE.MeshLambertMaterial({ color: 0xAAB4C8 }), 0, -s * 1.35, 0); // клинок
+    box(armR, s * 0.04, s * 0.9, s * 0.06, glow(0xDD1133, 0.4), 0, -s * 1.35, 0); // кровавый дол
+    head = new THREE.Group(); head.position.set(0, s * 1.52, 0); g.add(head);
+    box(head, s * 0.48, s * 0.48, s * 0.48, steelM, 0, 0, 0);             // шлем
+    box(head, s * 0.4, s * 0.08, s * 0.06, steelD, 0, s * 0.02, s * 0.24);// прорезь
+    eyes(head, s * 0.02, s * 0.26, s * 0.1, 0xFF2233, s * 0.08, s * 0.04);
+    box(head, s * 0.52, s * 0.1, s * 0.52, steelD, 0, s * 0.26, 0);       // гребень-основа
+    box(head, s * 0.08, s * 0.3, s * 0.4, capeM, 0, s * 0.42, -s * 0.02); // плюмаж
+    tagY = s * 1.95;
+  }
+
+  else if (id === 'kraken') { // 🐙 купол, клюв, 8 двухсегментных щупалец
+    box(g, s * 0.75, s * 0.7, s * 0.75, mat, 0, s * 0.95, 0);             // мантия
+    box(g, s * 0.55, s * 0.4, s * 0.55, matL, 0, s * 1.45, 0);            // купол
+    box(g, s * 0.6, s * 0.15, s * 0.6, matD, 0, s * 0.62, 0);             // воротник
+    box(g, s * 0.2, s * 0.12, s * 0.14, matL, -s * 0.2, s * 1.3, s * 0.3);// пятна
+    box(g, s * 0.14, s * 0.1, s * 0.12, matL, s * 0.22, s * 1.1, s * 0.32);
+    head = new THREE.Group(); head.position.set(0, s * 0.95, 0); g.add(head);
+    box(head, s * 0.16, s * 0.22, s * 0.16, new THREE.MeshLambertMaterial({ color: 0x1A2A3A }), 0, -s * 0.28, s * 0.36); // клюв
+    for (const sd of [-1, 1]) {                                            // глаза по бокам
+      box(head, s * 0.16, s * 0.2, s * 0.06, glow(0xFFDD44, 0.8), sd * s * 0.3, s * 0.05, s * 0.28);
+      box(head, s * 0.22, s * 0.06, s * 0.08, matD, sd * s * 0.3, s * 0.18, s * 0.28);
+    }
+    const tentPivots = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const p = new THREE.Group(); p.position.set(Math.cos(a) * s * 0.32, s * 0.6, Math.sin(a) * s * 0.32); g.add(p);
+      const dx = Math.cos(a), dz = Math.sin(a);
+      box(p, s * 0.16, s * 0.14, s * 0.5, mat, dx * s * 0.22, 0, dz * s * 0.22, 0, -a + Math.PI / 2, 0); // верхний сегмент
+      box(p, s * 0.13, s * 0.5, s * 0.13, matD, dx * s * 0.42, -s * 0.25, dz * s * 0.42, 0, 0, dx * 0.15); // нижний
+      cone(p, s * 0.06, s * 0.18, matL, dx * s * 0.44, -s * 0.55, dz * s * 0.44, Math.PI); // присоска-кончик
+      tentPivots.push(p);
+    }
+    legL = tentPivots[6]; legR = tentPivots[2]; armL = tentPivots[5]; armR = tentPivots[3];
+    tagY = s * 1.55;
+  }
+
+  else if (id === 'goblin_king') { // 👑 уши, нос, корона с рубином, скипетр
+    const skinM = mat, pantM = new THREE.MeshLambertMaterial({ color: 0x3A2A1A });
+    const goldM = new THREE.MeshLambertMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.25 });
+    const capeM = new THREE.MeshLambertMaterial({ color: 0x8A1428 });
+    legL = limb(s * 0.2, s * 0.35, s * 0.22, pantM, -s * 0.18, s * 0.35, 0);
+    legR = limb(s * 0.2, s * 0.35, s * 0.22, pantM, s * 0.18, s * 0.35, 0);
+    box(legL, s * 0.22, s * 0.1, s * 0.3, pantM, 0, -s * 0.32, s * 0.04);
+    box(legR, s * 0.22, s * 0.1, s * 0.3, pantM, 0, -s * 0.32, s * 0.04);
+    box(g, s * 0.7, s * 0.55, s * 0.5, skinM, 0, s * 0.62, 0);            // пузо
+    box(g, s * 0.74, s * 0.3, s * 0.54, capeM, 0, s * 0.82, 0);           // мантия-верх
+    box(g, s * 0.74, s * 0.12, s * 0.54, goldM, 0, s * 0.42, 0);          // золотой пояс
+    box(g, s * 0.5, s * 0.7, s * 0.05, capeM, 0, s * 0.65, -s * 0.28, 0.06); // плащ
+    armL = limb(s * 0.17, s * 0.45, s * 0.19, skinM, -s * 0.42, s * 0.85, 0);
+    armR = limb(s * 0.17, s * 0.45, s * 0.19, skinM, s * 0.42, s * 0.85, 0);
+    box(armR, s * 0.07, s * 0.6, s * 0.07, goldM, 0, -s * 0.6, s * 0.05); // скипетр
+    box(armR, s * 0.16, s * 0.16, s * 0.16, glow(0xDD1133, 0.7), 0, -s * 0.28, s * 0.05); // рубин
+    head = new THREE.Group(); head.position.set(0, s * 1.18, 0); g.add(head);
+    box(head, s * 0.58, s * 0.5, s * 0.52, skinM, 0, 0, 0);
+    box(head, s * 0.14, s * 0.12, s * 0.2, matL, 0, -s * 0.05, s * 0.32); // нос
+    box(head, s * 0.2, s * 0.24, s * 0.06, skinM, -s * 0.36, s * 0.05, 0, 0, 0, 0.5); // уши
+    box(head, s * 0.2, s * 0.24, s * 0.06, skinM, s * 0.36, s * 0.05, 0, 0, 0, -0.5);
+    box(head, s * 0.2, s * 0.06, s * 0.08, matD, 0, s * 0.14, s * 0.27);  // брови
+    eyes(head, s * 0.02, s * 0.27, s * 0.14, 0xFFDD33, s * 0.09, s * 0.06);
+    box(head, s * 0.5, s * 0.12, s * 0.46, goldM, 0, s * 0.3, 0);         // корона
+    for (let i = 0; i < 5; i++) cone(head, s * 0.05, s * 0.16, goldM, (i - 2) * s * 0.11, s * 0.42, s * 0.1 * (i % 2 ? 1 : -0.6));
+    box(head, s * 0.1, s * 0.1, s * 0.06, glow(0xDD1133, 0.8), 0, s * 0.3, s * 0.24); // рубин короны
+    tagY = s * 1.75;
+  }
+
+  else if (id === 'ice_troll') { // 🧊 мохнатый, клыки, ледяные шипы и дубина
+    const furM = new THREE.MeshLambertMaterial({ color: 0xE8F4FF });
+    const iceM = new THREE.MeshLambertMaterial({ color: 0xAAEEFF, transparent: true, opacity: 0.75, emissive: 0x66CCFF, emissiveIntensity: 0.2 });
+    legL = limb(s * 0.3, s * 0.5, s * 0.34, matD, -s * 0.28, s * 0.5, 0);
+    legR = limb(s * 0.3, s * 0.5, s * 0.34, matD, s * 0.28, s * 0.5, 0);
+    box(g, s * 1.15, s * 0.85, s * 0.8, mat, 0, s * 0.92, 0);             // туловище
+    box(g, s * 0.8, s * 0.6, s * 0.12, furM, 0, s * 0.85, s * 0.4);       // мех на груди
+    for (const sd of [-1, 1]) box(g, s * 0.4, s * 0.24, s * 0.45, furM, sd * s * 0.55, s * 1.32, 0); // меховые плечи
+    cone(g, s * 0.09, s * 0.3, iceM, -s * 0.25, s * 1.45, -s * 0.3, -0.5);// ледяные шипы
+    cone(g, s * 0.11, s * 0.38, iceM, 0, s * 1.5, -s * 0.32, -0.5);
+    cone(g, s * 0.09, s * 0.3, iceM, s * 0.25, s * 1.45, -s * 0.3, -0.5);
+    armL = limb(s * 0.3, s * 0.85, s * 0.32, mat, -s * 0.72, s * 1.28, 0);
+    armR = limb(s * 0.3, s * 0.85, s * 0.32, mat, s * 0.72, s * 1.28, 0);
+    box(armL, s * 0.34, s * 0.2, s * 0.36, furM, 0, -s * 0.78, 0);        // меховые кулаки
+    box(armR, s * 0.34, s * 0.2, s * 0.36, furM, 0, -s * 0.78, 0);
+    box(armR, s * 0.18, s * 0.5, s * 0.18, iceM, 0, -s * 1.1, 0);         // ледяная дубина
+    box(armR, s * 0.42, s * 0.36, s * 0.42, iceM, 0, -s * 1.45, 0);
+    cone(armR, s * 0.07, s * 0.2, iceM, s * 0.15, -s * 1.68, 0, Math.PI); // сосульки
+    cone(armR, s * 0.07, s * 0.2, iceM, -s * 0.12, -s * 1.68, s * 0.1, Math.PI);
+    head = new THREE.Group(); head.position.set(0, s * 1.52, 0); g.add(head);
+    box(head, s * 0.55, s * 0.5, s * 0.5, mat, 0, 0, 0);
+    box(head, s * 0.59, s * 0.16, s * 0.53, furM, 0, s * 0.24, 0);        // меховая шапка
+    box(head, s * 0.5, s * 0.12, s * 0.08, matD, 0, s * 0.1, s * 0.24);   // бровь
+    cone(head, s * 0.06, s * 0.2, furM, -s * 0.16, -s * 0.2, s * 0.24, 0.5); // клыки вверх
+    cone(head, s * 0.06, s * 0.2, furM, s * 0.16, -s * 0.2, s * 0.24, 0.5);
+    box(head, s * 0.12, s * 0.14, s * 0.1, matL, 0, -s * 0.02, s * 0.27); // нос
+    eyes(head, s * 0.04, s * 0.26, s * 0.15, 0xCCFFFF);
+    tagY = s * 1.95;
+  }
+
+  const tag = makeNameTag(bossData.name);
+  tag.position.y = tagY;
+  tag.scale.set(s * 0.65, s * 0.165, 1); // табличка в масштабе босса
+  g.add(tag);
+
+  return { group: g, armL, armR, legL, legR, head };
 }
 
 // ============================================================
@@ -1074,7 +1212,7 @@ export function updateMobs(dt) {
         m.group.traverse(o => {
           if (o.material && o.material.emissive) {
             o.material.emissive.setHex(flash ? 0xAA2222 : 0x000000);
-          }
+          });
         });
       }
     }
