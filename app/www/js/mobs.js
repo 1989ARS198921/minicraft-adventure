@@ -1212,7 +1212,7 @@ export function updateMobs(dt) {
         m.group.traverse(o => {
           if (o.material && o.material.emissive) {
             o.material.emissive.setHex(flash ? 0xAA2222 : 0x000000);
-          });
+          }
         });
       }
     }
