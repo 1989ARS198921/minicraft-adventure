@@ -102,7 +102,7 @@ export const QUESTS = [
   { id: 'ice_dragon_slayer', text: 'Победи Ледяного дракона ❄️' },
   { id: 'fire_elemental_slayer', text: 'Победи Огненного элементаля 🔥' },
   { id: 'dark_knight_slayer', text: 'Победи Тёмного рыцаря ⚔️' },
-  { id: 'all_bosses', text: 'Победи всех боссов! 🏆', need: 20 },
+  { id: 'all_bosses', text: 'Победи всех боссов! 🏆' },
 
   // ============================================================
   //  7. ИССЛЕДОВАНИЕ МИРА
@@ -206,7 +206,8 @@ export const QUESTS = [
 
   // 🌟 СКВОЗНАЯ ЦЕЛЬ — «Легенда о герое»: печати логов против Кащея!
   { id: 'legend_seals', need: 6, text: '🔮 Легенда: собери 6 печатей силы из логов монстров' },
-  { id: 'legend_face', after: 'legend_seals', text: '💀 Легенда: предъяви печати Кащею в его замке!' }
+  { id: 'legend_face', after: 'legend_seals', text: '💀 Легенда: предъяви печати Кащею в его замке!' },
+  { id: 'kaschey_boss', after: 'legend_face', text: '💀 ФИНАЛ: Кащей предал тебя! Победи Бессмертного в его замке!' }
 ];
 
 // ============================================================
@@ -397,6 +398,7 @@ export function initQuests() {
     if (kind === 'ice_dragon') questProgress('ice_dragon_slayer');
     if (kind === 'fire_elemental') questProgress('fire_elemental_slayer');
     if (kind === 'dark_knight') questProgress('dark_knight_slayer');
+    if (kind === 'kaschey') questProgress('kaschey_boss'); // 💀 ФИНАЛ
     // 🏙️ Боссы в городских цепочках
     if (kind === 'necromancer') questProgress('ancient4');
     if (kind === 'ice_troll') questProgress('north4');
@@ -468,6 +470,9 @@ export function initQuests() {
   // 👑 Разговор с мэром города: двигает «речевые» шаги цепочки
   // (шаг 2 — донести весть, шаг 5 — вернуться за наградой)
   on('lairCleared', () => questProgress('lairHunter')); // ⚔️ логова монстров
+
+  // 💀 Печати предъявлены — Кащей показывает истинное лицо: ФИНАЛЬНАЯ БИТВА!
+  on('questDone', id => { if (id === 'legend_face') emit('kascheyFight'); });
 
   on('cityTalk', city => {
     if (city === 'kaschey') questProgress('legend_face'); // 💀 печати предъявлены!

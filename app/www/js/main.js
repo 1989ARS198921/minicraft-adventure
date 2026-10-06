@@ -10,7 +10,8 @@ import { initAudio } from './audio.js';
 import { initWorld, setSeed, streamChunks, groundHeight, blockAt } from './world.js';
 import { initParticles, updateParticles } from './particles.js';
 import { initTorches, initTorchLights, updateTorchLights, addTorch, getTorches } from './torches.js';
-import { initQuests, renderQuests } from './quests.js';
+import { initQuests, renderQuests, questState } from './quests.js';
+import { on } from './bus.js';
 import { initUI, initHotbar, initBackpack, updateInvUI, showToast as showToast2 } from './ui.js';
 import { initSave, loadSave, markDirty } from './save.js';
 import { initDayNight, updateDayNight, updateSlowUI } from './daynight.js';
@@ -29,7 +30,7 @@ import { initShop, drinkPotion } from './shop.js';
 import { initCampfires, updateCampfires } from './campfire.js';
 import { initFairy, updateFairy } from './fairy.js';
 import { initDragons, updateDragons } from './dragons.js';
-import { initMobs, updateMobs } from './mobs.js';
+import { initMobs, updateMobs, spawnKaschey } from './mobs.js';
 import { initMagic, updateMagic } from './magic.js';
 import { initDungeon, updateDungeon, DUNGEON_TORCHES } from './dungeon.js';
 import { CITY_TORCHES } from './surface_cities.js';
@@ -179,6 +180,18 @@ initNPCs(G);
 initFairy(G);
 initDragons(G);
 initMobs(G);
+
+// 💀 ФИНАЛ (Этап 10): герой предъявил 6 печатей — Кащей предал и напал!
+on('kascheyFight', () => {
+  showToast2('💀 Кащей: Печати мои!.. Ты больше не нужен, герой. УМРИ!');
+  setTimeout(() => showToast2('⚔️ ФИНАЛЬНАЯ БИТВА: победи Кащея Бессмертного!'), 2500);
+  spawnKaschey();
+});
+// Если игрок вышел посреди финальной битвы — Кащей ждёт его снова
+if (questState.legend_face && questState.legend_face.done &&
+    !(questState.kaschey_boss && questState.kaschey_boss.done)) {
+  spawnKaschey();
+}
 initSkills(G);
 initArtifacts(G);
 initQuestSites(G);

@@ -236,6 +236,29 @@ const BOSSES = [
   }
 ];
 
+// 💀 ФИНАЛЬНЫЙ БОСС — Кащей Бессмертный.
+// Не в общем списке: появляется у своего замка только после того,
+// как герой принёс ему 6 печатей силы (квест «Легенда»).
+const KASCHEY_BOSS = {
+  id: 'kaschey',
+  name: '💀 Кащей Бессмертный',
+  hp: 600, dmg: 32, speed: 2.3, aggro: 30, reach: 4.5, cool: 2.4,
+  drop: 'diamondOre', dropN: 20,
+  color: 0x1A1025, size: 3.4,
+  desc: 'Финальный босс — предатель Кащей',
+  hitMsg: '💀 Кащей испепелил тебя!',
+  x: -350, z: 300 // центр замка Кащея
+};
+
+// Вызывается из main.js по событию 'kascheyFight' (или при загрузке,
+// если игрок вышел посреди финальной битвы).
+export function spawnKaschey() {
+  if (MOBS.some(m => m.kind === 'kaschey' && !m.dead)) return null; // уже на сцене
+  const m = spawnMob('kaschey', KASCHEY_BOSS.x, KASCHEY_BOSS.z, KASCHEY_BOSS.hp, true, KASCHEY_BOSS);
+  if (m) { m.angry = true; sfx.roar(); }
+  return m;
+}
+
 // ============================================================
 //  🧍 ПИКСЕЛЬНЫЕ МОДЕЛИ ОБЫЧНЫХ МОНСТРОВ
 // ============================================================
@@ -704,6 +727,35 @@ function makeBossModel(bossData) {
     tagY = s * 1.95;
   }
 
+  else if (id === 'kaschey') { // 💀 финальный босс: тёмный владыка с косой
+    const boneM = new THREE.MeshLambertMaterial({ color: 0xE8E0D0 });
+    const robeM = new THREE.MeshLambertMaterial({ color: 0x2A1A3A });
+    const trimM = glow(0x8AFF5A, 0.8); // ядовито-зелёное свечение
+    legL = limb(s * 0.22, s * 0.4, s * 0.24, matD, -s * 0.2, s * 0.4, 0);
+    legR = limb(s * 0.22, s * 0.4, s * 0.24, matD, s * 0.2, s * 0.4, 0);
+    box(g, s * 0.9, s * 0.45, s * 0.65, mat, 0, s * 0.42, 0);             // подол робы
+    box(g, s * 0.94, s * 0.08, s * 0.69, trimM, 0, s * 0.2, 0);           // светящийся край
+    box(g, s * 0.7, s * 0.6, s * 0.5, robeM, 0, s * 0.95, 0);             // ряса
+    for (let i = 0; i < 3; i++) box(g, s * 0.5, s * 0.05, s * 0.04, boneM, 0, s * (0.82 + i * 0.14), s * 0.26); // рёбра
+    box(g, s * 0.85, s * 0.2, s * 0.6, mat, 0, s * 1.22, 0);              // плечи
+    for (const sd of [-1, 1]) cone(g, s * 0.08, s * 0.3, boneM, sd * s * 0.42, s * 1.42, 0, 0, 0, -sd * 0.5); // костяные шипы
+    armL = limb(s * 0.2, s * 0.55, s * 0.22, robeM, -s * 0.45, s * 1.2, 0);
+    armR = limb(s * 0.2, s * 0.55, s * 0.22, robeM, s * 0.45, s * 1.2, 0);
+    box(armL, s * 0.14, s * 0.14, s * 0.14, boneM, 0, -s * 0.6, 0);       // кисти-скелет
+    box(armR, s * 0.14, s * 0.14, s * 0.14, boneM, 0, -s * 0.6, 0);
+    box(armR, s * 0.07, s * 1.3, s * 0.07, matD, 0, -s * 0.7, s * 0.1);   // коса: древко
+    box(armR, s * 0.55, s * 0.1, s * 0.04, new THREE.MeshLambertMaterial({ color: 0xC8D8E8 }), s * 0.26, -s * 1.32, s * 0.1); // лезвие
+    box(armR, s * 0.55, s * 0.03, s * 0.05, trimM, s * 0.26, -s * 1.36, s * 0.1); // светящаяся кромка
+    head = new THREE.Group(); head.position.set(0, s * 1.5, 0); g.add(head);
+    box(head, s * 0.5, s * 0.45, s * 0.45, boneM, 0, 0, 0);               // череп
+    box(head, s * 0.3, s * 0.12, s * 0.1, matD, 0, -s * 0.24, s * 0.2);   // челюсть
+    eyes(head, s * 0.05, s * 0.24, s * 0.12, 0x8AFF5A, s * 0.1, s * 0.1); // зелёные глаза
+    box(head, s * 0.56, s * 0.1, s * 0.5, mat, 0, s * 0.26, 0);           // корона-основа
+    for (let i = 0; i < 3; i++) cone(head, s * 0.05, s * 0.22, trimM, (i - 1) * s * 0.16, s * 0.4, 0); // зубцы
+    box(g, s * 0.8, s * 1.0, s * 0.06, mat, 0, s * 0.85, -s * 0.3, 0.06); // плащ-тьма
+    tagY = s * 1.85;
+  }
+
   const tag = makeNameTag(bossData.name);
   tag.position.y = tagY;
   tag.scale.set(s * 0.65, s * 0.165, 1); // табличка в масштабе босса
@@ -991,9 +1043,9 @@ export function initMobs(gameContext) {
   planSpawns();
   manageSpawns(1); // сразу материализуем тех, кто рядом со стартом
 
-  // ---- 10 БОССОВ: ⏸️ ВРЕМЕННО ОТКЛЮЧЕНЫ (крупных монстров убрали, вернём позже) ----
+  // ---- 10 БОССОВ: 🟢 В ИГРЕ (Этап 10) ----
   let bossSpawned = 0;
-  for (const boss of (false ? BOSSES : [])) {
+  for (const boss of BOSSES) {
     // Проверяем, что босс не в запретной зоне
     let canSpawn = true;
     for (const zone of FORBIDDEN_ZONES) {

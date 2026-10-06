@@ -27,6 +27,7 @@ export const ACHIEVEMENTS = [
   { id: 'seal1',      icon: '🔮', name: 'Первая печать',    desc: 'Зачисти логово монстров' },
   { id: 'seal6',      icon: '🔮', name: 'Владыка печатей',  desc: 'Собери все 6 печатей силы' },
   { id: 'legend',     icon: '🌟', name: 'Легенда мира',     desc: 'Предъяви печати Кащею' },
+  { id: 'kaschey',    icon: '💀', name: 'Конец Бессмертного', desc: 'Победи Кащея в финальной битве' },
   { id: 'diamond',    icon: '💎', name: 'Алмаз!',           desc: 'Найди алмазную руду' },
   { id: 'rich',       icon: '🪙', name: 'Богач',            desc: 'Собери 10 золотых руд разом' },
   { id: 'unicorn',    icon: '🦄', name: 'Друг единорога',   desc: 'Погладь единорога' },
@@ -172,6 +173,7 @@ export function initGameplay(gameContext) {
   });
   on('blockPlaced', () => { placed++; if (placed === 50) unlockAch('builder50'); });
   on('mobkill', () => { kills++; if (kills === 1) unlockAch('firstKill'); if (kills === 25) unlockAch('hunter25'); });
+  on('bosskill', kind => { if (kind === 'kaschey') unlockAch('kaschey'); }); // 💀 финал
   on('pet', () => unlockAch('unicorn'));
   on('dragon', () => unlockAch('dragonT'));
   on('fire', () => unlockAch('fire'));
