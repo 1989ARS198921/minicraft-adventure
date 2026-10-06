@@ -297,6 +297,7 @@ setTimeout(() => {
 function initAudioButtons() {
   const mk = (top, getOn, toggle, label, title) => {
     const b = document.createElement('button');
+    b.className = 'audBtn'; // 📱 чтобы тач-ввод знал: это UI, а не экран обзора
     b.title = title;
     b.style.cssText = `position:fixed;left:10px;top:${top}px;z-index:100;` +
       'background:rgba(0,0,0,0.7);color:#fff;border:2px solid rgba(255,255,255,0.4);' +
@@ -328,6 +329,7 @@ function showIntro() {
     if (localStorage.getItem('mc_intro')) return;
     let i = 0;
     const ov = document.createElement('div');
+    ov.id = 'introOv'; // 📱 помечаем как UI для тач-ввода
     ov.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(5,10,20,.88);' +
       'display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;';
     const box = document.createElement('div');

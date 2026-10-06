@@ -116,7 +116,7 @@ function initTouch() {
   let hotbarTouchId = null, hotbarStartX = 0, hotbarLastX = 0;
 
   function onUI(el) {
-    return el.closest && el.closest('.btn, #hotbar, #quests, #overlay, #backpack, #dlg, #shop, #hearts, #minimap, #bigMap, #timeBadge, #lvlBadge, #flyBadge');
+    return el.closest && el.closest('.btn, .audBtn, #introOv, #hotbar, #quests, #overlay, #backpack, #dlg, #shop, #hearts, #minimap, #bigMap, #timeBadge, #lvlBadge, #flyBadge');
   }
   function setTouchAction() { document.body.style.touchAction = 'none'; }
   setTouchAction();
