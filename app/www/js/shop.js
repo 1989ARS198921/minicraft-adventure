@@ -32,9 +32,12 @@ export const SHOP_ITEMS = [
   { icon: '⚔️', give: 'swordStone',   n: 1, cost: { goldOre: 2 }, desc: 'Крепкий каменный. Урон 3' },
   { icon: '⚔️', give: 'swordGold',    n: 1, cost: { goldOre: 4 }, desc: 'Сияющий золотой. Урон 4' },
   { icon: '💎', give: 'swordDiamond', n: 1, cost: { diamondOre: 2 }, desc: 'Легендарный! Урон 5' },
+  { icon: '⚔️', give: 'swordSteel',   n: 1, cost: { diamondOre: 4 }, desc: 'Булат высшей пробы! Урон 6' },
   // 🛡️ Броня: монстры бьют слабее!
   { icon: '🧥', give: 'armorLeather', n: 1, cost: { coalOre: 3 }, desc: 'Удары слабее на 1' },
-  { icon: '🛡️', give: 'armorChain',   n: 1, cost: { goldOre: 2, diamondOre: 1 }, desc: 'Удары слабее на 2!' }
+  { icon: '🛡️', give: 'armorChain',   n: 1, cost: { goldOre: 2, diamondOre: 1 }, desc: 'Удары слабее на 2!' },
+  { icon: '🛡️', give: 'armorPlate',   n: 1, cost: { goldOre: 3, diamondOre: 3 }, desc: 'Рыцарские латы! Удары слабее на 3!' }
+  // 🔥❄️🐉💀 огненный/ледяной мечи, чешуя и коса — только трофеи боссов!
 ];
 
 // 🏹 Мастерская эльфов: лук и стрелы (платим цветами и золотом)

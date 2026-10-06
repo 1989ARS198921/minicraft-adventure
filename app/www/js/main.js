@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { CONFIG, STARTER_INV } from './config.js';
-import { initAudio } from './audio.js';
+import { initAudio, toggleMusic, toggleSound, isMusicOn, isSoundOn } from './audio.js';
 import { initWorld, setSeed, streamChunks, groundHeight, blockAt } from './world.js';
 import { initParticles, updateParticles } from './particles.js';
 import { initTorches, initTorchLights, updateTorchLights, addTorch, getTorches } from './torches.js';
@@ -288,3 +288,69 @@ setTimeout(() => {
     console.error('❌ Ошибка строительства городов:', e);
   }
 }, 3000);
+
+// ============================================================
+//  🎬 ПАК 5: вводные титры (цель игры) + тумблеры 🎵/🔊
+// ============================================================
+
+// 🎵🔊 Кнопки музыки и звука — слева, под кнопкой «📋 HUD»
+function initAudioButtons() {
+  const mk = (top, getOn, toggle, label, title) => {
+    const b = document.createElement('button');
+    b.title = title;
+    b.style.cssText = `position:fixed;left:10px;top:${top}px;z-index:100;` +
+      'background:rgba(0,0,0,0.7);color:#fff;border:2px solid rgba(255,255,255,0.4);' +
+      'border-radius:10px;padding:6px 10px;font-size:12px;font-weight:bold;cursor:pointer;';
+    const paint = () => { b.textContent = label; b.style.opacity = getOn() ? 1 : 0.45; };
+    b.onclick = () => { toggle(); paint(); };
+    paint();
+    document.body.appendChild(b);
+  };
+  mk(120, isMusicOn, toggleMusic, '🎵 Музыка', 'вкл/выкл фоновую музыку');
+  mk(160, isSoundOn, toggleSound, '🔊 Звук', 'вкл/выкл звуки игры');
+}
+initAudioButtons();
+
+// 🎬 Вводные титры — за 4 слайда объясняем цель игры.
+// Показываем один раз (флаг в localStorage), есть «Пропустить».
+const INTRO_SLIDES = [
+  { icon: '⛏️', title: 'Добро пожаловать, герой!',
+    text: 'Это мини-мир Майнкрафта: копай, строй, разводи костры. Но это ещё и сказка — с квестами, магией, драконами и 10 боссами.' },
+  { icon: '📜', title: 'Твой путь',
+    text: 'Выполняй задания жителей (список 📋 слева вверху). Квесты ведут от деревни к городам, Хогвартсу и сказочным логовам. Снаряжение покупай у Тихона, лук — у эльфов.' },
+  { icon: '👑', title: 'Боссы и печати силы',
+    text: 'По миру разбросаны 10 боссов: великан, голем, дракон, паучиха и другие. Побеждай — получишь артефакты, а с сильнейших падают огненный и ледяной мечи и драконья чешуя!' },
+  { icon: '💀', title: 'Финал: Кащей Бессмертный',
+    text: 'Собери 6 печатей силы и принеси их Кащею в его замок на западе. Но берегись: старый Кащей коварен... Удачи, герой!' }
+];
+function showIntro() {
+  try {
+    if (localStorage.getItem('mc_intro')) return;
+    let i = 0;
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(5,10,20,.88);' +
+      'display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;';
+    const box = document.createElement('div');
+    box.style.cssText = 'max-width:88vw;width:380px;text-align:center;color:#fff;' +
+      'background:linear-gradient(180deg,#1d2b45,#101a2c);border:3px solid #e8a33d;' +
+      'border-radius:16px;padding:22px 18px;';
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    const close = () => { localStorage.setItem('mc_intro', '1'); ov.remove(); };
+    const paint = () => {
+      const s = INTRO_SLIDES[i];
+      box.innerHTML = `<div style="font-size:44px">${s.icon}</div>` +
+        `<div style="font-weight:800;font-size:19px;margin:8px 0">${s.title}</div>` +
+        `<div style="font-size:14px;line-height:1.5;opacity:.92;min-height:66px">${s.text}</div>` +
+        `<div style="margin-top:6px;font-size:12px;opacity:.6">${i + 1} / ${INTRO_SLIDES.length}</div>` +
+        `<div style="display:flex;gap:10px;justify-content:center;margin-top:10px">` +
+        `<button data-a="skip" style="background:#555;border:0;border-radius:10px;color:#fff;padding:8px 14px;font-weight:700;cursor:pointer">Пропустить</button>` +
+        `<button data-a="next" style="background:#3f8b3f;border:0;border-radius:10px;color:#fff;padding:8px 18px;font-weight:800;cursor:pointer">` +
+        `${i < INTRO_SLIDES.length - 1 ? 'Далее ▶' : '⚔️ В путь!'}</button></div>`;
+      box.querySelector('[data-a=skip]').onclick = close;
+      box.querySelector('[data-a=next]').onclick = () => { if (i < INTRO_SLIDES.length - 1) { i++; paint(); } else close(); };
+    };
+    paint();
+  } catch (e) { console.warn('[intro] не показались:', e); }
+}
+showIntro();

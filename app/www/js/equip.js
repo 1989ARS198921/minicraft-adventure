@@ -16,22 +16,32 @@ export const WEAPON_DMG = {
   swordWood: 2,    // 🗡️ деревянный — первый меч героя
   swordStone: 3,   // ⚔️ каменный
   swordGold: 4,    // ⚔️ золотой
-  swordDiamond: 5  // 💎 алмазный — легенда!
+  swordDiamond: 5, // 💎 алмазный — легенда!
+  // 🗡️ Пак 4 «Лестница снаряжения»: высшие ступени
+  swordSteel: 6,   // ⚔️ стальной булат (у Тихона, за алмазы)
+  swordFire: 7,    // 🔥 огненный меч (трофей Огненного элементаля)
+  swordIce: 8,     // ❄️ ледяной меч (трофей Ледяного дракона)
+  swordKaschey: 10 // 💀 коса Кащея (трофей финального босса!)
 };
 // Цвет клинка каждого меча (для модельки в руке)
 export const SWORD_COLOR = {
   sword: 0x8B5A2B, swordWood: 0x8B5A2B,  // дерево — коричневое
   swordStone: 0x9A9A9A,                  // камень — серый
   swordGold: 0xFFD75E,                   // золото — сияет!
-  swordDiamond: 0x5CE8E0                 // алмаз — бирюзовый
+  swordDiamond: 0x5CE8E0,                // алмаз — бирюзовый
+  swordSteel: 0xB8C8D8,                  // булат — сизая сталь
+  swordFire: 0xFF5A1E,                   // огонь — пылающий
+  swordIce: 0xAAEEFF,                    // лёд — морозный
+  swordKaschey: 0x8AFF5A                 // коса — ядовито-зелёная
 };
 // Защита брони: на столько меньше бьют монстры
-export const ARMOR_VAL = { armorLeather: 1, armorChain: 2 };
+// armorPlate — латы рыцаря (у Тихона), armorDragon — чешуя (трофей дракона)
+export const ARMOR_VAL = { armorLeather: 1, armorChain: 2, armorPlate: 3, armorDragon: 4 };
 
 // Всё, что можно надеть (для рюкзака; старый 'sword' — тоже!)
 export const EQUIPPABLE = new Set([
   ...Object.keys(WEAPON_DMG),
-  'bow', 'armorLeather', 'armorChain'
+  'bow', 'armorLeather', 'armorChain', 'armorPlate', 'armorDragon'
 ]);
 
 // Есть ли вещь в рюкзаке? (старый 'sword' считаем деревянным)

@@ -22,6 +22,10 @@ export const NAMES = {
   // ⚔️ Этап 1: снаряжение героя (как в «Мече и Магии»!)
   swordWood: 'Деревянный меч', swordStone: 'Каменный меч',
   swordGold: 'Золотой меч', swordDiamond: 'Алмазный меч',
+  // 🗡️ Пак 4: высшая лестница (булат, трофеи боссов, коса Кащея)
+  swordSteel: 'Стальной меч', swordFire: 'Огненный меч',
+  swordIce: 'Ледяной меч', swordKaschey: 'Коса Кащея',
+  armorPlate: 'Латы рыцаря', armorDragon: 'Драконья чешуя',
   bow: 'Лук', arrows: 'Стрелы',
   armorLeather: 'Кожаная броня', armorChain: 'Кольчуга',
   // 🔮 Этап 3: свитки заклинаний (выученные живут в кнопках 🔮 справа)
@@ -41,7 +45,9 @@ const GOODIES = ['apple', 'firewood', 'matches', 'flower', 'mushroom',
                  'seal', 'bed',
                  'potionHealth', 'potionSpeed', 'potionJump', 'sword',
                  'swordWood', 'swordStone', 'swordGold', 'swordDiamond',
+                 'swordSteel', 'swordFire', 'swordIce', 'swordKaschey',
                  'bow', 'arrows', 'armorLeather', 'armorChain',
+                 'armorPlate', 'armorDragon',
                  'crystal',
                  // ✨ Артефакты
                  'artiVampFang', 'artiSunIdol', 'artiDragonHeart', 'artiWindBoots',
@@ -52,6 +58,8 @@ export const ICONS = { // у предметов вместо цвета — ве
   seal: '🔮', bed: '🛏️', chest: '📦',
   potionHealth: '🧪', potionSpeed: '⚡', potionJump: '🦘', sword: '🗡️',
   swordWood: '🗡️', swordStone: '🗡️', swordGold: '⚔️', swordDiamond: '⚔️',
+  swordSteel: '⚔️', swordFire: '🔥', swordIce: '❄️', swordKaschey: '💀',
+  armorPlate: '🛡️', armorDragon: '🐉',
   bow: '🏹', arrows: '➶', armorLeather: '🦺', armorChain: '🛡️',
   crystal: '💠',
   artiVampFang: '🦷', artiSunIdol: '☀️', artiDragonHeart: '💗',
