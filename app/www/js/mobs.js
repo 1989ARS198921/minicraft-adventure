@@ -1135,6 +1135,18 @@ function killMob(m) {
   if (m.kind === 'goblin_king') { G.sp = (G.sp || 0) + 2; showToast('👑 Корона короля! +2 очка навыков'); }
   // 🦷 Вампиры иногда роняют клык (артефакт)
   if (m.kind === 'vampire' && Math.random() < 0.15) giveArtifact(G, 'artiVampFang');
+  // 🗡️ Пак 4 «Лестница снаряжения»: особые трофеи с боссов
+  const BOSS_GEAR = {
+    fire_elemental: ['swordFire'],
+    ice_dragon: ['swordIce', 'armorDragon'],
+    kaschey: ['swordKaschey']
+  };
+  if (m.isBoss && BOSS_GEAR[m.kind]) {
+    for (const g of BOSS_GEAR[m.kind]) {
+      G.inv[g] = (G.inv[g] || 0) + 1;
+      showToast(`🎁 Трофей: ${NAMES[g]}! Надень в рюкзаке`);
+    }
+  }
   updateInvUI();
   
   const msg = m.isBoss
