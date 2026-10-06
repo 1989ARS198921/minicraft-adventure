@@ -1098,6 +1098,14 @@ export function attackMob(m, dmg = weaponDamage(G)) {
   m.flashT = 0.18;
   m.angry = true;
   
+  // 🐺 Этап 8: СТАЯ! Сородичи рядом слышат шум и бросаются на выручку
+  if (!m.isBoss && (m.kind === 'wolf' || m.kind === 'goblin' || m.kind === 'orc')) {
+    for (const o of MOBS) {
+      if (o !== m && !o.dead && o.kind === m.kind &&
+          Math.hypot(o.x - m.x, o.z - m.z) < 16) o.angry = true;
+    }
+  }
+  
   const dx = m.x - G.player.x, dz = m.z - G.player.z;
   const d = Math.hypot(dx, dz) || 1;
   m.x += dx / d * 0.7;
@@ -1214,6 +1222,96 @@ function mobCan(m, nx, nz) {
     !solidAt(bx, Math.floor(g + 1.5), bz);
 }
 
+// ============================================================
+//  🧠 ЭТАП 8: УМНЫЙ ИИ — болты, АОЕ, особые приёмы боссов
+// ============================================================
+
+// 🏹 Стрелки: держат дистанцию (min) и стреляют болтом до max
+const RANGED_SHOT = {
+  skeleton:       { min: 5, max: 14, fx: 'coalOre' },    // костяная стрела
+  necromancer:    { min: 6, max: 16, fx: 'coalOre' },    // тёмный болт
+  ice_dragon:     { min: 6, max: 16, fx: 'diamondOre' }, // ледяное дыхание
+  fire_elemental: { min: 5, max: 14, fx: 'goldOre' },    // огненный шар
+  kaschey:        { min: 6, max: 15, fx: 'coalOre' }     // коса тени
+};
+
+// Болт монстра: линия частиц от пасти до игрока + урон
+function mobBolt(m, shot) {
+  const p = G.player;
+  for (let i = 1; i <= 5; i++) {
+    const t = i / 6;
+    spawnParticles(m.x + (p.x - m.x) * t,
+      m.feet + 1.2 + (p.feet + 0.2 - m.feet) * t,
+      m.z + (p.z - m.z) * t, shot.fx);
+  }
+  sfx.shoot();
+  if (G.hp > 0) damage(Math.max(1, m.dmg - armorValue(G) - skillRank(G, 'defense')), m.hitMsg);
+}
+
+// 💥 АОЕ-удар по земле: кольцо частиц + урон всем в радиусе r
+function aoeSlam(m, r, msg) {
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    spawnParticles(m.x + Math.cos(a) * r * 0.8, m.feet + 0.2, m.z + Math.sin(a) * r * 0.8, 'coalOre');
+  }
+  sfx.roar();
+  const p = G.player;
+  if (Math.hypot(p.x - m.x, p.z - m.z) < r && Math.abs(p.feet - m.feet) < 3 && G.hp > 0) {
+    damage(Math.max(1, Math.round(m.dmg * 0.8) - armorValue(G) - skillRank(G, 'defense')), msg);
+  }
+}
+
+// 🧠 Особый приём босса (вызывается по таймеру, когда видит игрока)
+function bossAbility(m, dist) {
+  const p = G.player;
+  switch (m.kind) {
+    case 'dark_knight': // ⚔️ рывок: ×3 скорости на 0.6 сек
+      if (dist > 4 && dist < 20) {
+        m.dashT = 0.6;
+        showToast('⚔️ Тёмный рыцарь делает рывок!');
+        sfx.roar();
+      }
+      break;
+    case 'spider_queen': { // 🕷️ призыв паучат (не больше 4 за раз)
+      const n = MOBS.filter(x => !x.dead && x.minion).length;
+      if (n < 4) {
+        let summoned = 0;
+        for (let i = 0; i < 2; i++) {
+          const s = spawnMob('spider', m.x + Math.random() * 4 - 2, m.z + Math.random() * 4 - 2,
+            undefined, false, null, 'surface', m.feet);
+          if (s) { s.minion = true; s.angry = true; summoned++; }
+        }
+        if (summoned) { showToast('🕷️ Паучиха призвала паучат!'); sfx.squeak(); }
+      }
+      break;
+    }
+    case 'stone_golem':  aoeSlam(m, 5.5, '🗿 Голем раздавил тебя!'); break;
+    case 'forest_giant': aoeSlam(m, 5, '🌳 Великан топнул по земле!'); break;
+    case 'kraken':       aoeSlam(m, 6, '🐙 Кракен хлестнул щупальцами!'); break;
+    case 'ice_troll':    aoeSlam(m, 4.5, '🧊 Тролль обрушил ледяную волну!'); break;
+    case 'goblin_king': { // 👑 зовёт гвардию гоблинов
+      const n = MOBS.filter(x => !x.dead && x.minion).length;
+      if (n < 3 && dist < 14) {
+        const s = spawnMob('goblin', m.x + Math.random() * 4 - 2, m.z + Math.random() * 4 - 2,
+          undefined, false, null, 'surface', m.feet);
+        if (s) { s.minion = true; s.angry = true; showToast('👑 Король зовёт гвардию!'); }
+      }
+      break;
+    }
+    case 'kaschey': // 💀 телепорт во тьме ближе к герою, вблизи — коса тени
+      if (dist > 14) {
+        spawnParticles(m.x, m.feet + 1, m.z, 'coalOre');
+        const a = Math.random() * Math.PI * 2;
+        m.x = p.x + Math.cos(a) * 6;
+        m.z = p.z + Math.sin(a) * 6;
+        spawnParticles(m.x, m.feet + 1, m.z, 'coalOre');
+        showToast('💀 Кащей растворился во тьме...');
+        sfx.roar();
+      } else mobBolt(m, RANGED_SHOT.kaschey);
+      break;
+  }
+}
+
 export function updateMobs(dt) {
   updateArrows(dt);
   manageSpawns(dt); // подгрузка/выгрузка монстров по близости
@@ -1276,6 +1374,25 @@ export function updateMobs(dt) {
     const seesPlayer = (dist < aggroR || m.angry) &&
       Math.abs(p.feet - m.feet) < 3.5 && G.hp > 0;
     
+    // 😡 Этап 8: ЯРОСТЬ босса при HP < 30% — быстрее, злее, больнее
+    if (m.isBoss && !m.rage && m.hp < m.maxHp * 0.3) {
+      m.rage = true;
+      m.dmg = Math.round(m.dmg * 1.5);
+      m.speed = m.speed * 1.4;
+      m.cool = m.cool * 0.7;
+      showToast(`😡 ${m.name} ВПАЛ В ЯРОСТЬ!`);
+      sfx.roar();
+      spawnParticles(m.x, m.feet + 1.5, m.z, 'coalOre');
+    }
+    // 🧠 Этап 8: особый приём босса по таймеру
+    if (m.isBoss && seesPlayer && !farFromHome) {
+      m.abilT = (m.abilT === undefined ? 4 : m.abilT) - dt;
+      if (m.abilT <= 0) {
+        m.abilT = 6 + Math.random() * 3;
+        bossAbility(m, dist);
+      }
+    }
+    
     let walking = false;
     if (seesPlayer && !farFromHome) {
       if (!m.growled) {
@@ -1284,11 +1401,27 @@ export function updateMobs(dt) {
         else sfx.roar();
       }
       m.group.rotation.y = turnTo(m.group.rotation.y, Math.atan2(-dx, -dz), dt * 9);
-      if (dist > m.reach * 0.85) {
-        m.speedCur = Math.min(m.speed, (m.speedCur || 0) + dt * 7);
+      const shot = RANGED_SHOT[m.kind]; // 🏹 Этап 8: стрелок?
+      if (shot && dist > m.reach * 0.85 && dist < shot.max) {
+        // Держит дистанцию: слишком близко — отступает, иначе стреляет болтом
+        if (dist < shot.min) {
+          const nx = m.x - dx / dist * m.speed * 0.8 * dt;
+          const nz = m.z - dz / dist * m.speed * 0.8 * dt;
+          if (m.kind === 'ghost' || mobCan(m, nx, nz)) { m.x = nx; m.z = nz; }
+          walking = true;
+        } else m.speedCur = 0;
+        if (m.coolT <= 0) {
+          m.coolT = m.cool;
+          m.swingT = 0.45;
+          mobBolt(m, shot);
+        }
+      } else if (dist > m.reach * 0.85) {
+        let sp = m.speed;
+        if (m.dashT > 0) { sp *= 3; m.dashT -= dt; } // ⚔️ рывок Тёмного рыцаря
+        m.speedCur = Math.min(sp, (m.speedCur || 0) + dt * 7);
         const nx = m.x + dx / dist * m.speedCur * dt;
         const nz = m.z + dz / dist * m.speedCur * dt;
-        if (mobCan(m, nx, nz)) { m.x = nx; m.z = nz; }
+        if (m.kind === 'ghost' || mobCan(m, nx, nz)) { m.x = nx; m.z = nz; } // 👻 призрак сквозь стены
         walking = true;
       } else {
         m.speedCur = 0;
